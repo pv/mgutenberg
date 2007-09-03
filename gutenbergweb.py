@@ -2,6 +2,17 @@
 Python interface to Project Gutenberg web catalog.
 
 This may break at any time if they change page layout.
+
+Routines
+--------
+
+- search(author, title, etextnr)
+
+  Returns [(etext_id, authors, title, language), ...]
+  
+- etext_info(etext_id)
+
+  Returns [(url, format, encoding, compression), ...]
 """
 import urllib as _urllib, re as _re
 
@@ -40,7 +51,7 @@ def etext_info(etext_id):
     Get info concerning an Etext in the Project Gutenberg catalog
 
     :Returns:
-        list of (etext_id, authors, title, language)
+        list of (url, format, encoding, compression)
     """
     output = _fetch_page(_ETEXT_URL % dict(etext=etext_id))
     return _parse_gutenberg_ebook_html(etext_id, output)
@@ -161,9 +172,6 @@ _GUTEN_ETEXT_RE_1 = _re.compile("""
 def _parse_gutenberg_ebook_html(etext, html):
     """
     Parse etext page HTML
-
-    :Returns:
-        list of (url, format, encoding, compression)
     """
     entries = []
     
