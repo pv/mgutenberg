@@ -28,7 +28,7 @@ setup(
     author_email = "pav@iki.fi",
     license = "BSD, 3-clause",
     ##
-    packages = find_packages,
+    packages = find_packages(),
     scripts = ["gutenbrowse/gutenbrowse"],
     test_suite = 'nose.collector',
 )
