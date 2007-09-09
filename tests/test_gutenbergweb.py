@@ -17,6 +17,12 @@ def test_search_title():
     assert all(u'Nietzsche, Friedrich Wilhelm' in au for eid,au,tt,lng in r), r
     assert all(u"English" == lng for eid,au,tt,lng in r), r
 
+def test_search_pageno():
+    r = gutenbergweb.search(title="ring")
+    assert len(r) >= 50
+    r = gutenbergweb.search(title="ring", pageno=200)
+    assert r == []
+
 def test_search_etextnr():
     r = gutenbergweb.search(etextnr=1234)
     assert len(r) == 1
