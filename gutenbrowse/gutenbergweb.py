@@ -190,10 +190,10 @@ def _parse_gutenberg_ebook_html(etext, html):
             h = h[m.end():]
             g = m.groupdict()
 
-            url = g.get('url', '')
-            format = g.get('format', '')
-            encoding = g.get('encoding', '')
-            compression = g.get('compression', '')
+            url = g.get('url', '').strip()
+            format = g.get('format', '').lower().strip()
+            encoding = g.get('encoding', '').lower().strip()
+            compression = g.get('compression', '').lower().strip()
 
             if url:
                 if url.startswith('/'):
