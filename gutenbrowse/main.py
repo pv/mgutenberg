@@ -6,23 +6,36 @@ import gtk, gobject, subprocess, os, optparse
 from model import *
 from gettext import gettext as _
 
-AppBase = object
-Window = gtk.Window
-
 try:
     import hildon
     MAEMO = True
     AppBase = hildon.Program
     Window = hildon.Window
 except ImportError:
-    pass
+    AppBase = object
+    Window = gtk.Window
+
+def show_notify(widget, text):
+    banner = hildon.hildon_banner_show_animation(
+        widget,
+        "qgn_indi_pball_a",
+        _("Finding books..."))
+    banner.show()
+    return banner.destroy
 
 class GutenbrowseApp(AppBase):
     def __init__(self, base_directory):
         self.ebook_list = EbookList(base_directory)
-        self.ebook_list.refresh()
         self.window = MainWindow(self)
-        
+
+        if MAEMO:
+            close_banner = show_notify(self.window.widget,
+                                       _("Finding books..."))
+        else:
+            close_banner = lambda: None
+
+        self.ebook_list.refresh(callback=close_banner)
+                
     def run(self):
         self.window.show_all()
         

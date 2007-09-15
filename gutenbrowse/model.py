@@ -47,7 +47,7 @@ class EbookList(gtk.ListStore):
     def add(self, author=u"", title=u"", language=u"", file_name=""):
         self.append((author, title, language, file_name))
 
-    def refresh(self):
+    def refresh(self, callback=None):
         self.clear()
 
         def walk_tree(files, d, author_name=""):
@@ -90,6 +90,8 @@ class EbookList(gtk.ListStore):
             del r[:100]
             if r:
                 run_later_in_gui_thread(200, really_add, r)
+            else:
+                callback()
 
         def do_walk_tree(d):
             files = []
@@ -119,7 +121,7 @@ class GutenbergSearchList(gtk.ListStore):
     def add(self, author=u"", title=u"", language=u"", etext_id=-1):
         self.append((author, title, language, etext_id))
         
-    def new_search(self, author="", title=""):
+    def new_search(self, author="", title="", callback=None):
         self.last_search = (author, title)
         self.pageno = 0
         self.max_pageno = None
@@ -128,11 +130,13 @@ class GutenbergSearchList(gtk.ListStore):
             if not r:
                 self.max_pageno = 0
             self._repopulate(r)
+            if callback:
+                callback()
 
         run_in_background(gutenbergweb.search, author, title, pageno=0,
                           callback=on_finish)
 
-    def next_page(self):
+    def next_page(self, callback=None):
         if self.max_pageno is not None and self.pageno >= self.max_pageno:
             return # nothing to do
         
@@ -142,12 +146,14 @@ class GutenbergSearchList(gtk.ListStore):
             else:
                 self.pageno += 1
                 self._repopulate(r)
+            if callback:
+                callback()
 
         run_in_background(gutenbergweb.search, self.last_search[0],
                           self.last_search[1], pageno=self.pageno + 1,
                           callback=on_finish)
         
-    def prev_page(self):
+    def prev_page(self, callback=None):
         if self.pageno > 0:
             self.pageno -= 1
         else:
@@ -156,6 +162,8 @@ class GutenbergSearchList(gtk.ListStore):
         def on_finish(r):
             self.pageno -= 1
             self._repopulate(r)
+            if callback:
+                callback()
         
         run_in_background(gutenbergweb.search, self.last_search[0],
                           self.last_search[1], pageno=self.pageno - 1,
@@ -173,13 +181,15 @@ class GutenbergSearchList(gtk.ListStore):
         if self.max_pageno is None or self.pageno < self.max_pageno:
             self.add(_('(Next...)'), '', '', NEXT_ID)
         
-    def get_downloads(self, it):
+    def get_downloads(self, it, callback=None):
         author, title, language, etext_id = self[it]
         info = DownloadInfo(author, title, language, etext_id)
 
         def on_finish(r):
             for url, format, encoding, compression in r:
                 info.add(url, ', '.join(format, encoding, compression))
+            if callback:
+                callback(info)
 
         run_in_background(gutenbergweb.etext_info, etext_id,
                           callback=on_finish)
