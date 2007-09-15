@@ -12,29 +12,27 @@ try:
     AppBase = hildon.Program
     Window = hildon.Window
 except ImportError:
+    MAEMO = False
     AppBase = object
     Window = gtk.Window
 
 def show_notify(widget, text):
-    banner = hildon.hildon_banner_show_animation(
-        widget,
-        "qgn_indi_pball_a",
-        _("Finding books..."))
-    banner.show()
-    return banner.destroy
+    if MAEMO:
+        banner = hildon.hildon_banner_show_animation(widget,
+                                                     "qgn_indi_pball_a", text)
+        banner.show()
+        return banner.destroy
+    else:
+        # FIXME: Implement
+        return lambda: NotImplemented
 
 class GutenbrowseApp(AppBase):
     def __init__(self, base_directory):
         self.ebook_list = EbookList(base_directory)
         self.window = MainWindow(self)
 
-        if MAEMO:
-            close_banner = show_notify(self.window.widget,
-                                       _("Finding books..."))
-        else:
-            close_banner = lambda: None
-
-        self.ebook_list.refresh(callback=close_banner)
+        done_cb = show_notify(self.window.widget, _("Finding books..."))
+        self.ebook_list.refresh(callback=done_cb)
                 
     def run(self):
         self.window.show_all()
@@ -111,18 +109,22 @@ class GutenbergSearchWidget(object):
         self.widget_tree.connect("row-activated", self.on_activated)
 
     def on_search_clicked(self, btn):
+        done_cb = show_notify(self.widget, _("Searching..."))
         self.results.new_search(
             self.search_author.get_text(),
-            self.search_title.get_text())
+            self.search_title.get_text(),
+            callback=done_cb)
 
     def on_activated(self, tree, it, column):
         entry = self.results[it]
 
         if entry[3] == NEXT_ID:
-            self.results.next_page()
+            done_cb = show_notify(self.widget, _("Searching..."))
+            self.results.next_page(callback=done_cb)
             return
         elif entry[3] == PREV_ID:
-            self.results.prev_page()
+            done_cb = show_notify(self.widget, _("Searching..."))
+            self.results.prev_page(callback=done_cb)
             return
 
     # ---
