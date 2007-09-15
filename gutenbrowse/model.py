@@ -1,7 +1,37 @@
+import re, os
 import gtk
 import gutenbergweb
-from guithread import *
+
 from gettext import gettext as _
+from guithread import *
+
+def _is_caps_case(x):
+    if len(x) < 1:
+        return False
+    elif len(x) == 1:
+        return x[0] == x[0].upper()
+    else:
+        return x[0] == x[0].upper() and x[1] == x[1].lower()
+
+def get_valid_basename(base):
+    valid_ext = ['.txt', '.pdb', '.html']
+    skip_ext = ['.gz', '.bz2', '.tar']
+
+    while True:
+        base, ext = os.path.splitext(base)
+        if ext in valid_ext:
+            return base
+        elif ext in skip_ext:
+            pass
+        else:
+            return None
+
+FILE_RES = [
+    re.compile(r"^(?P<auth>[^-\[\]]+) - (?P<titl>[^\[\]]+) \[(?P<lang>.*)\]$"),
+    re.compile(r"^(?P<auth>[^-]+) - (?P<titl>.+)$"),
+    re.compile(r"^(?P<titl>[^\[\]]+) \[(?P<lang>.+)\]$"),
+    re.compile(r"^(?P<titl>.+)$")
+]
 
 class EbookList(gtk.ListStore):
     """
@@ -10,11 +40,67 @@ class EbookList(gtk.ListStore):
         [(author, title, language, file_name), ...]
     """
     
-    def __init__(self):
+    def __init__(self, base_directory):
         gtk.ListStore.__init__(self, str, str, str, str)
+        self.base_directory = base_directory
     
     def add(self, author=u"", title=u"", language=u"", file_name=""):
         self.append((author, title, language, file_name))
+
+    def refresh(self, sort=False):
+        self.clear()
+
+        def really_add(r):
+            for x in r:
+                self.append(x)
+
+        def do_add(files, entry, flush=False):
+            if entry is not None:
+                files.append(entry)
+            if len(files) >= 50 or flush:
+                to_add = list(files)
+                del files[:]
+                run_in_gui_thread(really_add, to_add)
+        
+        def walk_tree(files, d, author_name=""):
+            for path in os.listdir(d):
+                full_path = os.path.join(d, path)
+                if os.path.isdir(full_path):
+                    # recurse into a directory
+                    was_author = (',' in author_name or
+                                  _is_caps_case(author_name))
+                    if not author_name or not was_author:
+                        r = walk_tree(files, full_path, path)
+                    else:
+                        r = walk_tree(files, full_path, author_name)
+                else:
+                    base = get_valid_basename(path)
+                    if base is None:
+                        continue # not a valid file
+                    
+                    # a file or something like that
+                    entry = None
+                    for reg in FILE_RES:
+                        m = reg.match(base)
+                        if m:
+                            g = m.groupdict()
+                            entry = (g.get('auth', author_name),
+                                     g.get('titl', base),
+                                     g.get('lang', ''),
+                                     full_path)
+                            break
+                    if entry is None:
+                        entry = (author_name, base, "", full_path)
+                    
+                    do_add(files, entry)
+
+        def do_walk_tree(d):
+            files = []
+            walk_tree(files, self.base_directory)
+            do_add(files, None, True)
+
+        start_thread(do_walk_tree, self.base_directory)
+
 
 NEXT_ID = -1
 PREV_ID = -2

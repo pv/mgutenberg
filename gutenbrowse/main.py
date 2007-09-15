@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import pygtk
 pygtk.require('2.0')
-import gtk, gobject
+import gtk, gobject, subprocess, os
 
 from model import *
 from gettext import gettext as _
@@ -18,20 +18,11 @@ else:
 
 class GutenbrowseApp(AppBase):
     def __init__(self):
-        self.ebook_list = EbookList()
-        
-        for j in xrange(2000):
-            self.ebook_list.add(
-                "Niezsche, Karl Wilhelm",
-                "Also sprach Zarahustra",
-                "German",
-                "zarahustra.txt")
-            self.ebook_list.add(
-                "Alastair Reynolds",
-                "Absolution Gap",
-                "English",
-                "absolution.txt")
-            
+        self.ebook_list = EbookList("/home/dataman/Books/Fiction")
+        self.ebook_list.set_sort_column_id(2, gtk.SORT_ASCENDING)
+        self.ebook_list.set_sort_column_id(1, gtk.SORT_ASCENDING)
+        self.ebook_list.set_sort_column_id(0, gtk.SORT_ASCENDING)
+        self.ebook_list.refresh(sort=False)
         self.window = MainWindow(self)
         
     def run(self):
@@ -49,7 +40,8 @@ class EbookListWidget(object):
         self.widget_tree.connect("row-activated", self.on_activated)
         
     def on_activated(self, treeview, it, column):
-        print "ACTIVATED", self.store[it][3]
+        cmd = ['FBReader', self.store[it][3]]
+        os.spawnvp(os.P_NOWAIT, cmd[0], cmd)
 
     # ---
 
@@ -84,6 +76,14 @@ class EbookListWidget(object):
 
         self.widget = self.widget_scroll
 
+class GutenbergDownloadWindow(object):
+    def __init__(self, app):
+        self.app = app
+        self._construct()
+
+    def _construct(self):
+        pass
+
 class GutenbergSearchWidget(object):
     def __init__(self, app):
         self.app = app
@@ -94,7 +94,6 @@ class GutenbergSearchWidget(object):
         self.widget_tree.connect("row-activated", self.on_activated)
 
     def on_search_clicked(self, btn):
-        print "SEARCHING"
         self.results.new_search(
             self.search_author.get_text(),
             self.search_title.get_text())
