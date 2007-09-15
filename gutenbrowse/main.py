@@ -36,6 +36,8 @@ class GutenbrowseApp(AppBase):
         
     def run(self):
         self.window.show_all()
+        
+        gtk.gdk.threads_init()
         gtk.main()
 
 class EbookListWidget(object):
