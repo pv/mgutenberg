@@ -1,28 +1,26 @@
 #!/usr/bin/env python
 import pygtk
 pygtk.require('2.0')
-import gtk, gobject, subprocess, os
+import gtk, gobject, subprocess, os, optparse
 
 from model import *
 from gettext import gettext as _
 
-MAEMO = False
+AppBase = object
+Window = gtk.Window
 
-if MAEMO:
+try:
     import hildon
+    MAEMO = True
     AppBase = hildon.Program
     Window = hildon.Window
-else:
-    AppBase = object
-    Window = gtk.Window
+except ImportError:
+    pass
 
 class GutenbrowseApp(AppBase):
-    def __init__(self):
-        self.ebook_list = EbookList("/home/dataman/Books/Fiction")
-        self.ebook_list.set_sort_column_id(2, gtk.SORT_ASCENDING)
-        self.ebook_list.set_sort_column_id(1, gtk.SORT_ASCENDING)
-        self.ebook_list.set_sort_column_id(0, gtk.SORT_ASCENDING)
-        self.ebook_list.refresh(sort=False)
+    def __init__(self, base_directory):
+        self.ebook_list = EbookList(base_directory)
+        self.ebook_list.refresh(sort=True)
         self.window = MainWindow(self)
         
     def run(self):
@@ -38,10 +36,15 @@ class EbookListWidget(object):
         self._construct()
         
         self.widget_tree.connect("row-activated", self.on_activated)
+        self.widget_tree.connect("map-event", self.on_map_event)
         
     def on_activated(self, treeview, it, column):
         cmd = ['FBReader', self.store[it][3]]
         os.spawnvp(os.P_NOWAIT, cmd[0], cmd)
+
+    def on_map_event(self, widget, ev):
+        run_later_in_gui_thread(500,
+                                self.widget_tree.columns_autosize)
 
     # ---
 
@@ -57,24 +60,25 @@ class EbookListWidget(object):
 
         author_cell = gtk.CellRendererText()
         author_col = gtk.TreeViewColumn(_('Author'), author_cell, text=0)
-        author_col.set_sort_column_id(0)
-        author_col.set_resizable(True)
         
         title_cell = gtk.CellRendererText()
         title_col = gtk.TreeViewColumn(_('Title'), title_cell, text=1)
-        title_col.set_sort_column_id(1)
-        title_col.set_resizable(True)
 
         lang_cell = gtk.CellRendererText()
         lang_col = gtk.TreeViewColumn(_('Language'), lang_cell, text=2)
-        lang_col.set_sort_column_id(2)
-        lang_col.set_resizable(True)
-        
-        self.widget_tree.append_column(author_col)
-        self.widget_tree.append_column(title_col)
-        self.widget_tree.append_column(lang_col)
+
+        for j, col in enumerate([author_col, title_col, lang_col]):
+            col.set_sort_column_id(j)
+            col.set_resizable(True)
+            col.set_sizing(gtk.TREE_VIEW_COLUMN_FIXED)
+            col.set_fixed_width(200)
+            self.widget_tree.append_column(col)
 
         self.widget = self.widget_scroll
+
+        # optimizations
+        self.widget_tree.set_fixed_height_mode(True)
+        self.widget_tree.set_headers_visible(True)
 
 class GutenbergDownloadWindow(object):
     def __init__(self, app):
@@ -203,5 +207,8 @@ class MainWindow(object):
         gtk.main_quit()
 
 def main():
-    app = GutenbrowseApp()
+    p = optparse.OptionParser()
+    options, args = p.parse_args()
+    
+    app = GutenbrowseApp(args[0])
     app.run()
