@@ -50,19 +50,8 @@ class EbookList(gtk.ListStore):
     def refresh(self, sort=False):
         self.clear()
 
-        def really_add(r):
-            for x in r:
-                self.append(x)
-
-        def do_add(files, entry, flush=False):
-            if entry is not None:
-                files.append(entry)
-            if len(files) >= 50 or flush:
-                to_add = list(files)
-                del files[:]
-                run_in_gui_thread(really_add, to_add)
-        
-        def walk_tree(files, d, author_name=""):
+        def walk_tree(d, author_name=""):
+            files = []
             for path in os.listdir(d):
                 full_path = os.path.join(d, path)
                 if os.path.isdir(full_path):
@@ -70,9 +59,9 @@ class EbookList(gtk.ListStore):
                     was_author = (',' in author_name or
                                   _is_caps_case(author_name))
                     if not author_name or not was_author:
-                        r = walk_tree(files, full_path, path)
+                        files.extend(walk_tree(full_path, path))
                     else:
-                        r = walk_tree(files, full_path, author_name)
+                        files.extend(walk_tree(full_path, author_name))
                 else:
                     base = get_valid_basename(path)
                     if base is None:
@@ -91,13 +80,24 @@ class EbookList(gtk.ListStore):
                             break
                     if entry is None:
                         entry = (author_name, base, "", full_path)
-                    
-                    do_add(files, entry)
+                    files.append(entry)
+            return files
+
+        def really_add(r):
+            # Inserting stuff to GtkTreeView goes slowly on Maemo,
+            # so we slow down the rate a bit. This makes the app usable
+            # during insertion...
+            for x in r[:100]:
+                self.append(x)
+            del r[:100]
+            if r:
+                run_later_in_gui_thread(200, really_add, r)
 
         def do_walk_tree(d):
-            files = []
-            walk_tree(files, self.base_directory)
-            do_add(files, None, True)
+            files = walk_tree(self.base_directory)
+            if sort:
+                files.sort()
+            run_in_gui_thread(really_add, files)
 
         start_thread(do_walk_tree, self.base_directory)
 
