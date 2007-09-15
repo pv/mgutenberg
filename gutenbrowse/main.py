@@ -20,7 +20,7 @@ except ImportError:
 class GutenbrowseApp(AppBase):
     def __init__(self, base_directory):
         self.ebook_list = EbookList(base_directory)
-        self.ebook_list.refresh(sort=True)
+        self.ebook_list.refresh()
         self.window = MainWindow(self)
         
     def run(self):

@@ -47,11 +47,10 @@ class EbookList(gtk.ListStore):
     def add(self, author=u"", title=u"", language=u"", file_name=""):
         self.append((author, title, language, file_name))
 
-    def refresh(self, sort=False):
+    def refresh(self):
         self.clear()
 
-        def walk_tree(d, author_name=""):
-            files = []
+        def walk_tree(files, d, author_name=""):
             for path in os.listdir(d):
                 full_path = os.path.join(d, path)
                 if os.path.isdir(full_path):
@@ -59,9 +58,9 @@ class EbookList(gtk.ListStore):
                     was_author = (',' in author_name or
                                   _is_caps_case(author_name))
                     if not author_name or not was_author:
-                        files.extend(walk_tree(full_path, path))
+                        walk_tree(files, full_path, path)
                     else:
-                        files.extend(walk_tree(full_path, author_name))
+                        walk_tree(files, full_path, author_name)
                 else:
                     base = get_valid_basename(path)
                     if base is None:
@@ -81,7 +80,6 @@ class EbookList(gtk.ListStore):
                     if entry is None:
                         entry = (author_name, base, "", full_path)
                     files.append(entry)
-            return files
 
         def really_add(r):
             # Inserting stuff to GtkTreeView goes slowly on Maemo,
@@ -94,9 +92,9 @@ class EbookList(gtk.ListStore):
                 run_later_in_gui_thread(200, really_add, r)
 
         def do_walk_tree(d):
-            files = walk_tree(self.base_directory)
-            if sort:
-                files.sort()
+            files = []
+            walk_tree(files, self.base_directory)
+            files.sort()
             run_in_gui_thread(really_add, files)
 
         start_thread(do_walk_tree, self.base_directory)
