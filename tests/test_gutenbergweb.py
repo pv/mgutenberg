@@ -33,9 +33,10 @@ def test_search_etextnr():
     assert lng == u"English", r
 
 def test_info():
-    r = gutenbergweb.etext_info(19634)
+    r, infodict = gutenbergweb.etext_info(19634)
     assert len(r) >= 4, r
     assert any('19634' in url for url,fmt,enc,comp in r), r
     assert any(fmt == 'plain text' for url,fmt,enc,comp in r), r
     assert any(enc == 'us-ascii' for url,fmt,enc,comp in r), r
-    assert any(comp == 'none' for url,fmt,enc,comp in r), r
+    assert any(comp == '' for url,fmt,enc,comp in r), r
+    assert 'audio book' in infodict['category'].lower()

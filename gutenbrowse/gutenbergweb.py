@@ -27,7 +27,7 @@ def search(author=None, title=None, etextnr=None, pageno=0):
     Search for an etext in the Project Gutenberg catalog
 
     :Returns:
-        list of (etext_id, authors, title, language)
+        [(etext_id, authors, title, language), ...]
     """
     if not author:
         author = ''
@@ -51,7 +51,10 @@ def etext_info(etext_id):
     Get info concerning an Etext in the Project Gutenberg catalog
 
     :Returns:
-        list of (url, format, encoding, compression)
+        [(url, format, encoding, compression), ...], infodict
+
+        infodict contains information about the whole entry.
+        Keys: 'category'
     """
     output = _fetch_page(_ETEXT_URL % dict(etext=etext_id))
     return _parse_gutenberg_ebook_html(etext_id, output)
@@ -76,6 +79,7 @@ def _fetch_page(url):
     
 
 def _strip_tags(snippet):
+    snippet = snippet.replace("&nbsp;", " ")
     snippet = snippet.replace("\r", " ")
     snippet = snippet.replace("\n", " ")
     snippet = snippet.replace("<br>", "\n")
@@ -154,6 +158,11 @@ def _parse_gutenberg_search_html(html):
 
 #-- Ebook info page
 
+_GUTEN_ETEXT_RE_0 = _re.compile("""
+.*?
+<th>Category</th>\s*<td><a[^>]*>(?P<category>[^>]*)</a>
+""", _re.X | _re.I)
+
 _GUTEN_ETEXT_RE_1 = _re.compile("""
 .*?
 <tr\s+class=".*?">
@@ -182,8 +191,18 @@ def _parse_gutenberg_ebook_html(etext, html):
             'plucker',
             'plucker'
             ))
+
+    category = u''
     
     h = html
+
+    m = _GUTEN_ETEXT_RE_0.search(h)
+    if m:
+        h = h[m.end():]
+        g = m.groupdict()
+        category = unicode(_strip_tags(g.get('category', '').strip()),
+                           'utf-8')
+    
     while h:
         m = _GUTEN_ETEXT_RE_1.search(h)
         if m:
@@ -191,9 +210,18 @@ def _parse_gutenberg_ebook_html(etext, html):
             g = m.groupdict()
 
             url = g.get('url', '').strip()
-            format = g.get('format', '').lower().strip()
-            encoding = g.get('encoding', '').lower().strip()
-            compression = g.get('compression', '').lower().strip()
+            format = unicode(_strip_tags(g.get('format', '')).lower().strip(),
+                             'utf-8')
+            encoding = unicode(_strip_tags(g.get('encoding', '')).lower().strip(),
+                               'utf-8')
+            compression = unicode(_strip_tags(g.get('compression', '')).lower().strip(),
+                                  'utf-8')
+            if encoding == 'none':
+                encoding = ''
+            if compression == 'none':
+                compression = ''
+            if format == 'none':
+                format = ''
 
             if url:
                 if url.startswith('/'):
@@ -203,4 +231,4 @@ def _parse_gutenberg_ebook_html(etext, html):
         else:
             break
 
-    return entries
+    return entries, dict(category=category)
