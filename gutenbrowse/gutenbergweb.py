@@ -17,6 +17,8 @@ Routines
 import urllib as _urllib, re as _re
 from gettext import gettext as _
 
+from util import *
+
 #------------------------------------------------------------------------------
 # Interface routines
 #------------------------------------------------------------------------------
@@ -67,17 +69,11 @@ def etext_info(etext_id):
 _TAG_RE = _re.compile("<[^>]+>")
 
 def _fetch_page(url):
-    h = _urllib.urlopen(url)
+    h = myurlopen(url)
     try:
-        output = h.read()
+        return h.read()
     finally:
         h.close()
-
-    if '404 not found' in output.lower():
-        raise SearchFailure()
-
-    return output
-    
 
 def _strip_tags(snippet):
     snippet = snippet.replace("&nbsp;", " ")
