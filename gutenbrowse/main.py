@@ -92,7 +92,7 @@ class EbookListWidget(object):
 
     def on_filter_changed(self, w):
         def do_refilter():
-            if len(self.filter_text) <= 2:
+            if len(''.join(self.filter_text)) <= 2:
                 self.filter = None
                 self.filtered_store = None
                 if self.widget_tree.get_model() is not self.store:
@@ -107,16 +107,16 @@ class EbookListWidget(object):
                 if self.widget_tree.get_model() is not self.filtered_store:
                     self.widget_tree.set_model(self.filtered_store)
         
-        self.filter_text = self.filter_entry.get_text().lower()
-
+        self.filter_text = self.filter_entry.get_text().lower().strip().split()
+        
         delay = 1000 if MAEMO else 500
         self.filter_runner.run_later_in_gui_thread(delay, do_refilter)
 
     def filter_func(self, model, it, data=None):
         if not self.filter_text: return True
         entry = model[it]
-        return (self.filter_text
-                in ('%s%s%s' % (entry[0], entry[1], entry[2])).lower())
+        raw = ''.join([entry[0], entry[1], entry[2]]).lower()
+        return all(x in raw for x in self.filter_text)
         
     # ---
 
@@ -125,8 +125,11 @@ class EbookListWidget(object):
         self.widget = box
 
         # Filter entry
+        hbox = gtk.HBox()
+        hbox.pack_start(gtk.Label(_("Filter:")), fill=False, expand=False)
         self.filter_entry = gtk.Entry()
-        box.pack_start(self.filter_entry, fill=True, expand=False)
+        hbox.pack_start(self.filter_entry, fill=True, expand=True)
+        box.pack_start(hbox, fill=True, expand=False)
 
         # Tree
         scroll = gtk.ScrolledWindow()
