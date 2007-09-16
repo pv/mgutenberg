@@ -15,6 +15,7 @@ Routines
   Returns [(url, format, encoding, compression), ...]
 """
 import urllib as _urllib, re as _re
+from gettext import gettext as _
 
 #------------------------------------------------------------------------------
 # Interface routines
@@ -27,7 +28,7 @@ def search(author=None, title=None, etextnr=None, pageno=0):
     Search for an etext in the Project Gutenberg catalog
 
     :Returns:
-        [(etext_id, authors, title, language), ...]
+        [(etext_id, authors, title, language, category), ...]
     """
     if not author:
         author = ''
@@ -107,7 +108,7 @@ _GUTEN_SEARCH_RE_1 = _re.compile("""
   \s*
   <td>(?P<etext>.*?)</td>
   \s*
-  <td>.*?</td>
+  <td>(?P<infocol>.*?)</td>
   \s*
   <td>
     (?P<authors>.*?)
@@ -145,11 +146,17 @@ def _parse_gutenberg_search_html(html):
             except (KeyError, ValueError):
                 continue
 
+            if 'stock_volume' in g.get('infocol', ''):
+                category = _(u'Audio book')
+            else:
+                category = u''
+
             entries.append((
                 etext,
                 unicode(_strip_tags(g.get('authors', '')), 'utf-8'),
                 unicode(_strip_tags(g.get('title', '')), 'utf-8'),
                 unicode(_strip_tags(g.get('language', '')), 'utf-8'),
+                category,
                 ))
         else:
             break

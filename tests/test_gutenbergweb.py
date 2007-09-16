@@ -3,19 +3,19 @@ import gutenbrowse.gutenbergweb as gutenbergweb
 def test_search_author():
     r = gutenbergweb.search(author='Nietzsche')
     assert len(r) >= 4, r
-    assert any(eid == 19634 for eid,au,tt,lng in r), r
+    assert any(eid == 19634 for eid,au,tt,lng,c in r), r
     assert all(isinstance(eid, int) and isinstance(au, unicode)
                and isinstance(tt, unicode) and isinstance(lng, unicode)
-               for eid,au,tt,lng in r), r
-    assert all(u'Nietzsche, Friedrich Wilhelm' in au for eid,au,tt,lng in r), r
-    assert any(u"Thus Spake Zarathustra" in tt for eid,au,tt,lng in r), r
-    assert any(u"English" == lng for eid,au,tt,lng in r), r
-    assert any(u"German" == lng for eid,au,tt,lng in r), r
+               for eid,au,tt,lng,c in r), r
+    assert all(u'Nietzsche, Friedrich Wilhelm' in au for eid,au,tt,lng,c in r), r
+    assert any(u"Thus Spake Zarathustra" in tt for eid,au,tt,lng,c in r), r
+    assert any(u"English" == lng for eid,au,tt,lng,c in r), r
+    assert any(u"German" == lng for eid,au,tt,lng,c in r), r
 
 def test_search_title():
     r = gutenbergweb.search(title="Beyond Good and Evil")
-    assert all(u'Nietzsche, Friedrich Wilhelm' in au for eid,au,tt,lng in r), r
-    assert all(u"English" == lng for eid,au,tt,lng in r), r
+    assert all(u'Nietzsche, Friedrich Wilhelm' in au for eid,au,tt,lng,c in r), r
+    assert all(u"English" == lng for eid,au,tt,lng,c in r), r
 
 def test_search_pageno():
     r = gutenbergweb.search(title="ring")
@@ -26,7 +26,7 @@ def test_search_pageno():
 def test_search_etextnr():
     r = gutenbergweb.search(etextnr=1234)
     assert len(r) == 1
-    eid, au, tt, lng = r[0]
+    eid, au, tt, lng, c = r[0]
     assert eid == 1234, r
     assert au == u"Conant, James Bryant, 1893-1978 [Editor]", r
     assert tt == u"Organic Syntheses", r
