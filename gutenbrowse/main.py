@@ -31,11 +31,11 @@ class GutenbrowseApp(AppBase):
         
         def done_cb():
             end_notify()
-            self.window.ebook_list.widget_tree.set_model(self.ebook_list)
+            self.window.ebook_list.thaw()
 
         end_notify = self.show_notify(self.window.widget,
                                       _("Finding books..."))
-        self.window.ebook_list.widget_tree.set_model(None)
+        self.window.ebook_list.freeze()
         self.ebook_list.refresh(callback=done_cb)
                 
     def show_notify(self, widget, text):
@@ -59,29 +59,61 @@ class GutenbrowseApp(AppBase):
 class EbookListWidget(object):
     def __init__(self, app):
         self.app = app
-        self.store = app.ebook_list
+        self.filter_text = ''
+        self.store = app.ebook_list.filter_new()
+        self.store.set_visible_func(self.filter_func)
         self._construct()
-        
+
+        self.filter_runner = SingleRunner()
+
         self.widget_tree.connect("row-activated", self.on_activated)
         self.widget_tree.connect("map-event", self.on_map_event)
+        self.filter_entry.connect("changed", self.on_filter_changed)
         
+    def freeze(self):
+        self.widget_tree.set_model(None)
+        
+    def thaw(self):
+        self.widget_tree.set_model(self.store)
+
+    # ---
+    
     def on_activated(self, treeview, it, column):
-        cmd = ['FBReader', self.store[it][3]]
+        entry = treeview.get_model()[it]
+        cmd = ['FBReader', entry[3]]
         os.spawnvp(os.P_NOWAIT, cmd[0], cmd)
 
     def on_map_event(self, widget, ev):
-        run_later_in_gui_thread(500,
+        run_later_in_gui_thread(600,
                                 self.widget_tree.columns_autosize)
 
+    def on_filter_changed(self, w):
+        self.filter_text = self.filter_entry.get_text()
+        self.filter_runner.run_later_in_gui_thread(500, self.store.refilter)
+
+    def filter_func(self, model, it, data=None):
+        if not self.filter_text: return True
+        entry = model[it]
+        return (self.filter_text
+                in ('%s%s%s' % (entry[0], entry[1], entry[2])).lower())
+        
     # ---
 
     def _construct(self):
-        self.widget_scroll = gtk.ScrolledWindow()
-        self.widget_tree = gtk.TreeView(self.store)
+        box = gtk.VBox()
+        self.widget = box
 
-        self.widget_scroll.set_policy(gtk.POLICY_AUTOMATIC,
-                                      gtk.POLICY_ALWAYS)
-        self.widget_scroll.add(self.widget_tree)
+        # Filter entry
+        self.filter_entry = gtk.Entry()
+        box.pack_start(self.filter_entry, fill=True, expand=False)
+
+        # Tree
+        scroll = gtk.ScrolledWindow()
+        box.pack_start(scroll, fill=True, expand=True)
+
+        self.widget_tree = gtk.TreeView(self.store)
+        scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_ALWAYS)
+        scroll.add(self.widget_tree)
 
         self.widget_tree.set_enable_search(True)
         self.widget_tree.set_headers_visible(True)
@@ -103,8 +135,6 @@ class EbookListWidget(object):
             col.set_sizing(gtk.TREE_VIEW_COLUMN_FIXED)
             col.set_fixed_width(200)
             self.widget_tree.append_column(col)
-        
-        self.widget = self.widget_scroll
         
         # optimizations for large lists
         self.widget_tree.set_fixed_height_mode(True)
