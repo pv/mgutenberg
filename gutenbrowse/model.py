@@ -102,162 +102,17 @@ class EbookList(gtk.ListStore):
 
         start_thread(do_walk_tree, self.base_directory)
 
-    def sync_fbreader(self, booklist_fn=None, state_fn=None):
-        home = os.environ.get('HOME')
-        
-        if booklist_fn is None:
-            if home is None:
-                return False # can't
-            booklist_fn = os.path.join(home, '.FBReader', 'books.xml')
-        
-        if state_fn is None:
-            if home is None:
-                return False # can't
-            state_fn = os.path.join(home, '.FBReader', 'state.xml')
-        
+    def sync_fbreader(self, callback=None):
+
+        def on_finish(r):
+            if callback: callback()
+
         file_map = dict((os.path.realpath(r[3]),
                          (r[0], r[1], r[2])) for r in self)
-        seen = {}
         
-        out_books = tempfile.TemporaryFile()
-        out_state = tempfile.TemporaryFile()
-
-        #
-        # -- Manipulate book list
-        #
+        run_in_background(sync_fbreader, file_map,
+                          callback=on_finish)
         
-        f = open(booklist_fn, 'r')
-        try:
-            tree = ET.parse(f)
-        finally:
-            f.close()
-        
-        root = tree.getroot()
-        
-        # Update entries
-        for group in root.getiterator('group'):
-            fn = group.get('name')
-            if fn in file_map:
-                seen[fn] = True
-                base = get_valid_basename(os.path.basename(fn))
-                author, title, language = file_map[fn]                
-                for opt in group.getiterator('option'):
-                    name = opt.get('name', '')
-                    value = opt.get('value', '')
-                    if name == 'AuthorDisplayName':
-                        if value == 'Unknown Author':
-                            opt.set('value', author)
-                    elif name == 'AuthorSortKey':
-                        if value == '___':
-                            opt.set('value', author.lower())
-                    elif name == 'Title':
-                        if value == base:
-                            opt.set('value', title)
-                    elif name == 'Language':
-                        if not value:
-                            opt.set('value', LANGUAGE_CODE_MAP.get(language,
-                                                                   ''))
-                del file_map[fn]
-        
-        # Add missing entries
-        for fn, (author, title, language) in file_map.iteritems():
-            if fn in seen: continue
-            
-            try:
-                r = os.stat(fn)
-            except OSError:
-                continue
-            
-            group = ET.SubElement(root, 'group', dict(name=fn))
-            
-            def add_options(*a):
-                for name, value in zip(a[::2], a[1::2]):
-                    ET.SubElement(group, 'option', dict(name=name,value=value))
-
-            add_options('AuthorDisplayName', author,
-                        'AuthorSortKey', author.lower(),
-                        'Initialized', 'true',
-                        'BreakType', '6',
-                        'Encoding', 'iso-8859-1',
-                        'IgnoredIndent', '2',
-                        'Size', str(r.st_size),
-                        'Title', title,
-                        'Language', LANGUAGE_CODE_MAP.get(language, 'none'),
-                        )
-        
-        # Write
-        tree.write(out_books)
-        
-        #
-        # -- Manipulate state
-        #
-        
-        f = open(state_fn, 'r')
-        try:
-            tree = ET.parse(f)
-        finally:
-            f.close()
-
-        root = tree.getroot()
-        booklists = [g for g in root.findall('group')
-                     if g.get('name') == 'BookList']
-        for booklist in booklists[:1]:
-            seen = {}
-            max_id = 0
-            book_count = 0
-            size_group = None
-            
-            for opt in booklist.getiterator('option'):
-                name = opt.get('name')
-                value = opt.get('value')
-                if name.startswith('Book'):
-                    seen[value] = True
-                    book_count += 1
-                    try:
-                        max_id = max(int(name[4:]), max_id)
-                    except ValueError:
-                        pass
-                elif name == 'Size':
-                    size_group = opt
-            
-            for fn, (author, title, language) in file_map.iteritems():
-                if fn in seen: continue
-
-                max_id += 1
-                book_count += 1
-                ET.SubElement(booklist, 'option',
-                              dict(name='Book%d' % max_id,
-                                   value=fn))
-
-            if size_group is None:
-                size_group = ET.SubElement(booklist, 'option',
-                                           dict(name='Size'))
-
-            size_group.set('value', str(book_count))
-
-        tree.write(out_state)
-
-        #
-        # -- Replace FBReader files
-        #
-        out_books.seek(0)
-        f = open(booklist_fn, 'w')
-        try:
-            shutil.copyfileobj(out_books, f)
-        finally:
-            f.close()
-            out_books.close()
-
-        out_state.seek(0)
-        f = open(state_fn, 'w')
-        try:
-            shutil.copyfileobj(out_state, f)
-        finally:
-            f.close()
-            out_state.close()
-
-        return True
-
 NEXT_ID = -10
 PREV_ID = -20
 
@@ -461,3 +316,168 @@ def clean_filename(s):
     # cleanup for VFAT and others
     s = re.sub(r'[\x00-\x1f"\*\\/:<>?|]', '', s)
     return s
+
+def sync_fbreader(file_map, booklist_fn=None, state_fn=None):
+    """
+    Synchronize FBReader book list.
+
+    :Parameters:
+        file_map : { file_name: (author, title, language), ... }
+    """
+    home = os.environ.get('HOME')
+
+    if booklist_fn is None:
+        if home is None:
+            return False # can't
+        booklist_fn = os.path.join(home, '.FBReader', 'books.xml')
+
+    if state_fn is None:
+        if home is None:
+            return False # can't
+        state_fn = os.path.join(home, '.FBReader', 'state.xml')
+
+    seen = {}
+
+    out_books = tempfile.TemporaryFile()
+    out_state = tempfile.TemporaryFile()
+
+    #
+    # -- Manipulate book list
+    #
+
+    f = open(booklist_fn, 'r')
+    try:
+        tree = ET.parse(f)
+    finally:
+        f.close()
+
+    root = tree.getroot()
+
+    # Update entries
+    for group in root.getiterator('group'):
+        fn = group.get('name')
+        if not os.path.isfile(fn):
+            print fn
+        if fn in file_map:
+            seen[fn] = True
+            base = get_valid_basename(os.path.basename(fn))
+            author, title, language = file_map[fn]                
+            for opt in group.getiterator('option'):
+                name = opt.get('name', '')
+                value = opt.get('value', '')
+                if name == 'AuthorDisplayName':
+                    if value == 'Unknown Author':
+                        opt.set('value', author)
+                elif name == 'AuthorSortKey':
+                    if value == '___':
+                        opt.set('value', author.lower())
+                elif name == 'Title':
+                    if value == base:
+                        opt.set('value', title)
+                elif name == 'Language':
+                    if not value:
+                        opt.set('value', LANGUAGE_CODE_MAP.get(language, ''))
+
+    # Add missing entries
+    for fn, (author, title, language) in file_map.iteritems():
+        if fn in seen: continue
+
+        try:
+            r = os.stat(fn)
+        except OSError:
+            continue
+
+        group = ET.SubElement(root, 'group', dict(name=fn))
+
+        def add_options(*a):
+            for name, value in zip(a[::2], a[1::2]):
+                ET.SubElement(group, 'option', dict(name=name,value=value))
+
+        add_options('AuthorDisplayName', author,
+                    'AuthorSortKey', author.lower(),
+                    'Initialized', 'true',
+                    'BreakType', '6',
+                    'Encoding', 'iso-8859-1',
+                    'IgnoredIndent', '2',
+                    'Size', str(r.st_size),
+                    'Title', title,
+                    'Language', LANGUAGE_CODE_MAP.get(language, 'none'),
+                    )
+
+    # Write
+    out_books.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+    tree.write(out_books, encoding='utf-8')
+
+    #
+    # -- Manipulate state
+    #
+
+    f = open(state_fn, 'r')
+    try:
+        tree = ET.parse(f)
+    finally:
+        f.close()
+
+    root = tree.getroot()
+    try:
+        booklist = [g for g in root.findall('group')
+                    if g.get('name') == 'BookList'][0]
+    except IndexError:
+        booklist = ET.SubElement(root, 'group', dict(name='BookList'))
+    
+    seen = {}
+    max_id = 0
+    book_count = 0
+    size_group = None
+
+    for opt in booklist.getiterator('option'):
+        name = opt.get('name')
+        value = opt.get('value')
+        if name.startswith('Book'):
+            seen[value] = True
+            book_count += 1
+            try:
+                max_id = max(int(name[4:]), max_id)
+            except ValueError:
+                pass
+        elif name == 'Size':
+            size_group = opt
+
+    for fn, (author, title, language) in file_map.iteritems():
+        if fn in seen: continue
+
+        max_id += 1
+        book_count += 1
+        ET.SubElement(booklist, 'option',
+                      dict(name='Book%d' % max_id,
+                           value=fn))
+
+    if size_group is None:
+        size_group = ET.SubElement(booklist, 'option',
+                                   dict(name='Size'))
+
+    size_group.set('value', str(book_count))
+
+    out_state.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+    tree.write(out_state, encoding='utf-8')
+
+    #
+    # -- Replace FBReader files
+    #
+    out_books.seek(0)
+    f = open(booklist_fn, 'w')
+    try:
+        shutil.copyfileobj(out_books, f)
+    finally:
+        f.close()
+        out_books.close()
+
+    out_state.seek(0)
+    f = open(state_fn, 'w')
+    try:
+        shutil.copyfileobj(out_state, f)
+    finally:
+        f.close()
+        out_state.close()
+
+    return True
