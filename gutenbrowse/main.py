@@ -16,16 +16,6 @@ except ImportError:
     AppBase = object
     Window = gtk.Window
 
-def show_notify(widget, text):
-    if MAEMO:
-        banner = hildon.hildon_banner_show_animation(widget,
-                                                     "qgn_indi_pball_a", text)
-        banner.show()
-        return banner.destroy
-    else:
-        # FIXME: Implement
-        return lambda: NotImplemented
-
 class GutenbrowseApp(AppBase):
     def __init__(self, base_directory):
         AppBase.__init__(self)
@@ -43,10 +33,23 @@ class GutenbrowseApp(AppBase):
             end_notify()
             self.window.ebook_list.widget_tree.set_model(self.ebook_list)
 
-        end_notify = show_notify(self.window.widget, _("Finding books..."))
+        end_notify = self.show_notify(self.window.widget,
+                                      _("Finding books..."))
         self.window.ebook_list.widget_tree.set_model(None)
         self.ebook_list.refresh(callback=done_cb)
                 
+    def show_notify(self, widget, text):
+        if MAEMO:
+            banner = hildon.hildon_banner_show_animation(
+                widget, "qgn_indi_pball_a", text)
+            banner.show()
+            return banner.destroy
+        else:
+            self.window.statusbar.push(0, text)
+            def finish():
+                self.window.statusbar.pop(0)
+            return finish
+
     def run(self):
         self.window.show_all()
         
@@ -123,8 +126,13 @@ class GutenbergDownloadWindow(object):
     def on_down_clicked(self, w):
         sel = self.down_list.get_selection().get_selected()[1]
         if sel:
-            def done_cb():
+            def done_cb(path):
                 notify_cb()
+                self.app.ebook_list.add(
+                    self.info.author,
+                    self.info.title,
+                    self.info.language,
+                    path)
             
             res = self.info.download(sel, self.app.base_directory,
                                      callback=done_cb)
@@ -132,7 +140,8 @@ class GutenbergDownloadWindow(object):
                 print "FILE_ALREADY_EXISTS"
                 # XXX: NotImplemented
             else:
-                notify_cb = show_notify(self.widget, _("Downloading..."))
+                notify_cb = self.app.show_notify(self.widget,
+                                                 _("Downloading..."))
                 self.widget.destroy()
 
     def on_cancel_clicked(self, w):
@@ -140,7 +149,6 @@ class GutenbergDownloadWindow(object):
 
     def on_selection_changed(self, w):
         sel = self.down_list.get_selection().get_selected()[1]
-        print sel
         if sel:
             self.down_button.set_sensitive(True)
         else:
@@ -225,7 +233,7 @@ class GutenbergSearchWidget(object):
         self.widget_tree.connect("row-activated", self.on_activated)
 
     def on_search_clicked(self, btn):
-        done_cb = show_notify(self.widget, _("Searching..."))
+        done_cb = self.app.show_notify(self.widget, _("Searching..."))
         self.results.new_search(
             self.search_author.get_text(),
             self.search_title.get_text(),
@@ -235,15 +243,18 @@ class GutenbergSearchWidget(object):
         entry = self.results[it]
 
         if entry[4] == NEXT_ID:
-            done_cb = show_notify(self.widget, _("Searching..."))
+            done_cb = self.app.show_notify(self.widget, _("Searching..."))
             self.results.next_page(callback=done_cb)
             return
         elif entry[4] == PREV_ID:
-            done_cb = show_notify(self.widget, _("Searching..."))
+            done_cb = self.app.show_notify(self.widget, _("Searching..."))
             self.results.prev_page(callback=done_cb)
             return
         else:
+            notify_cb = self.app.show_notify(self.widget,
+                                             _("Fetching information..."))
             def on_finish():
+                notify_cb()
                 w = GutenbergDownloadWindow(self.app, info)
                 w.show()
             info = self.results.get_downloads(it, callback=on_finish)
@@ -259,10 +270,15 @@ class GutenbergSearchWidget(object):
         self.search_author = gtk.Entry()
         self.search_button = gtk.Button(_("Search"))
 
+        self.search_title.set_activates_default(True)
+        self.search_author.set_activates_default(True)
+        self.search_button.set_flags(gtk.CAN_DEFAULT)
+
         tbl = gtk.Table(rows=3, columns=2)
 
-        entries = [(_("Title:"), self.search_title),
-                   (_("Author:"), self.search_author)]
+        entries = [(_("Author:"), self.search_author),
+                   (_("Title:"), self.search_title),
+                   ]
         for j, (a, b) in enumerate(entries):
             lbl = gtk.Label(a)
             lbl.set_alignment(0.5, 0.5)
@@ -314,7 +330,7 @@ class MainWindow(object):
         self.gutenberg_search = GutenbergSearchWidget(self.app)
 
         self._construct()
-        self.widget.connect("destroy", self.on_destroy)  
+        self.widget.connect("destroy", self.on_destroy)
 
     def show_all(self):
         self.widget.show_all()
@@ -323,12 +339,15 @@ class MainWindow(object):
         # Window
         self.widget = Window()
         self.widget.set_title("Gutenbrowse")
-        self.widget.set_border_width(10)
+
+        vbox = gtk.VBox()
+        self.widget.add(vbox)
 
         # Notebook packing
         self.notebook = gtk.Notebook()
+        self.notebook.set_border_width(5)
         self.notebook.set_show_border(False)
-        self.widget.add(self.notebook)
+        vbox.pack_start(self.notebook)
 
         # Local ebooks tab
         page = gtk.VBox()
@@ -339,10 +358,17 @@ class MainWindow(object):
         page = gtk.VBox()
         page.pack_end(self.gutenberg_search.widget, expand=True, fill=True)
         self.notebook.append_page(page, gtk.Label(_("Gutenberg")))
-        
+
+        self.gutenberg_search.search_button.grab_default()
+
         # Menu
 
         # Ebook context menu
+
+        # Status bar (non-Maemo)
+        if not MAEMO:
+            self.statusbar = gtk.Statusbar()
+            vbox.pack_start(self.statusbar, expand=False, fill=True)
 
     #-- Signals
 
