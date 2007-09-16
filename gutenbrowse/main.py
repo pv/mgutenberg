@@ -26,25 +26,42 @@ def main():
 class GutenbrowseApp(AppBase):
     def __init__(self, base_directory):
         AppBase.__init__(self)
-
+        
+        # XXX: App configuration: default base directory
+        
+        # XXX: Separate base directory from search directories
+        
         self.base_directory = base_directory
         self.ebook_list = EbookList(base_directory)
         self.window = MainWindow(self)
-
+        
         if MAEMO:
             self.add_window(self.window.widget)
-
+        
         # Refresh ebook list
         
-        def done_cb():
+        def done_cb(r):
             end_notify()
             self.window.ebook_list.thaw()
-    
+            if isinstance(r, Exception):
+                self.app.error_message(_("Error refreshing book list"), r)
+        
         end_notify = self.show_notify(self.window.widget,
                                       _("Finding books..."))
         self.window.ebook_list.freeze()
         self.ebook_list.refresh(callback=done_cb)
-                
+
+    def error_message(self, text, moreinfo=""):
+        dlg = gtk.MessageDialog(self.window.widget,
+                                type=gtk.MESSAGE_ERROR,
+                                buttons=gtk.BUTTONS_OK)
+        dlg.set_markup("<b>%s</b>" % text)
+        dlg.format_secondary_text(str(moreinfo))
+        def response(dlg, response_id):
+            dlg.destroy()
+        dlg.connect("response", response)
+        dlg.show()
+    
     def show_notify(self, widget, text):
         if MAEMO:
             banner = hildon.hildon_banner_show_animation(
@@ -140,8 +157,10 @@ class MainWindow(object):
         pass
 
     def on_action_update_fbreader(self, action):
-        def on_finish():
+        def on_finish(r):
             notify_cb()
+            if isinstance(r, Exception):
+                self.app.error_message(_("Error updating FBReader"), r)
 
         notify_cb = self.app.show_notify(self.widget,
                                          _("Synchronizing FBReader..."))
@@ -340,8 +359,13 @@ class GutenbergSearchWidget(object):
         self.widget_tree.connect("row-activated", self.on_activated)
 
     def on_search_clicked(self, btn):
-        # XXX: Error handling
-        done_cb = self.app.show_notify(self.widget, _("Searching..."))
+        def done_cb(r):
+            notify_cb()
+            if isinstance(r, Exception):
+                self.app.error_message(_("Error in fetching search results"),
+                                       r)
+        
+        notify_cb = self.app.show_notify(self.widget, _("Searching..."))
         self.results.new_search(
             self.search_author.get_text(),
             self.search_title.get_text(),
@@ -350,25 +374,34 @@ class GutenbergSearchWidget(object):
     def on_activated(self, tree, it, column):
         entry = self.results[it]
 
+        def done_cb(r):
+            notify_cb()
+            if isinstance(r, Exception):
+                self.app.error_message(_("Error in fetching search results"),
+                                       r)
+
         if entry[4] == NEXT_ID:
-            # XXX: Error handling
-            done_cb = self.app.show_notify(self.widget, _("Searching..."))
+            notify_cb = self.app.show_notify(self.widget, _("Searching..."))
             self.results.next_page(callback=done_cb)
             return
         elif entry[4] == PREV_ID:
-            # XXX: Error handling
-            done_cb = self.app.show_notify(self.widget, _("Searching..."))
+            notify_cb = self.app.show_notify(self.widget, _("Searching..."))
             self.results.prev_page(callback=done_cb)
             return
         else:
-            # XXX: Error handling
             notify_cb = self.app.show_notify(self.widget,
                                              _("Fetching information..."))
-            def on_finish():
+            
+            def on_finish(info):
                 notify_cb()
-                w = GutenbergDownloadWindow(self.app, info)
-                w.show()
-            info = self.results.get_downloads(it, callback=on_finish)
+                if isinstance(info, Exception):
+                    self.app.error_message(
+                        _("Error in fetching ebook information"), info)
+                else:
+                    w = GutenbergDownloadWindow(self.app, info)
+                    w.show()
+            
+            self.results.get_downloads(it, callback=on_finish)
 
     # ---
 
@@ -452,22 +485,32 @@ class GutenbergDownloadWindow(object):
         if sel:
             def done_cb(path):
                 notify_cb()
-                self.app.ebook_list.add(
-                    self.info.author,
-                    self.info.title,
-                    self.info.language,
-                    path)
+                if isinstance(path, Exception):
+                    self.app.error_message(
+                        _("Error in dowloading the file"), path)
+                else:
+                    self.app.ebook_list.add(
+                        self.info.author,
+                        self.info.title,
+                        self.info.language,
+                        path)
+                    # XXX: Prompt user to read the file, etc?
+                
+            try:
+                self.info.download(sel, self.app.base_directory,
+                                   callback=done_cb)
+                ok = True
+            except OverwriteFileException:
+                # XXX: implement
+                if True:
+                    return
+                self.info.download(sel, self.app.base_directory,
+                                   overwrite=True,
+                                   callback=done_cb)
 
-            # XXX: Error handling
-            res = self.info.download(sel, self.app.base_directory,
-                                     callback=done_cb)
-            if not res:
-                print "FILE_ALREADY_EXISTS"
-                # XXX: NotImplemented
-            else:
-                notify_cb = self.app.show_notify(self.widget,
-                                                 _("Downloading..."))
-                self.widget.destroy()
+            notify_cb = self.app.show_notify(self.widget,
+                                             _("Downloading..."))
+            self.widget.destroy()
 
     def on_cancel_clicked(self, w):
         self.widget.destroy()
