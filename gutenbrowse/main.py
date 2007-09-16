@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import pygtk
 pygtk.require('2.0')
-import gtk, gobject, subprocess, os, optparse
+import gtk, gobject, subprocess, os, optparse, urllib
 
 from model import *
 from gettext import gettext as _
@@ -28,10 +28,23 @@ def show_notify(widget, text):
 
 class GutenbrowseApp(AppBase):
     def __init__(self, base_directory):
+        AppBase.__init__(self)
+
+        self.base_directory = base_directory
         self.ebook_list = EbookList(base_directory)
         self.window = MainWindow(self)
 
-        done_cb = show_notify(self.window.widget, _("Finding books..."))
+        if MAEMO:
+            self.add_window(self.window.widget)
+
+        # Refresh ebook list
+        
+        def done_cb():
+            end_notify()
+            self.window.ebook_list.widget_tree.set_model(self.ebook_list)
+
+        end_notify = show_notify(self.window.widget, _("Finding books..."))
+        self.window.ebook_list.widget_tree.set_model(None)
         self.ebook_list.refresh(callback=done_cb)
                 
     def run(self):
@@ -68,42 +81,145 @@ class EbookListWidget(object):
         self.widget_scroll.add(self.widget_tree)
 
         self.widget_tree.set_enable_search(True)
-
+        self.widget_tree.set_headers_visible(True)
+        
         author_cell = gtk.CellRendererText()
         author_col = gtk.TreeViewColumn(_('Author'), author_cell, text=0)
         
         title_cell = gtk.CellRendererText()
         title_col = gtk.TreeViewColumn(_('Title'), title_cell, text=1)
-
+        
         lang_cell = gtk.CellRendererText()
         lang_col = gtk.TreeViewColumn(_('Language'), lang_cell, text=2)
-
+        
         for j, col in enumerate([author_col, title_col, lang_col]):
             col.set_sort_column_id(j)
             col.set_resizable(True)
+            
+            # speed up large lists...
             col.set_sizing(gtk.TREE_VIEW_COLUMN_FIXED)
             col.set_fixed_width(200)
             self.widget_tree.append_column(col)
-
+        
         self.widget = self.widget_scroll
-
-        # optimizations
+        
+        # optimizations for large lists
         self.widget_tree.set_fixed_height_mode(True)
-        self.widget_tree.set_headers_visible(True)
 
 class GutenbergDownloadWindow(object):
-    def __init__(self, app):
+    def __init__(self, app, info):
         self.app = app
+        self.info = info
         self._construct()
 
+        self.cancel_button.connect("clicked", self.on_cancel_clicked)
+        self.down_button.connect("clicked", self.on_down_clicked)
+
+        sel = self.down_list.get_selection()
+        sel.set_mode(gtk.SELECTION_SINGLE)
+        sel.connect("changed", self.on_selection_changed)
+        self.down_button.set_sensitive(False)
+
+    def on_down_clicked(self, w):
+        sel = self.down_list.get_selection().get_selected()[1]
+        if sel:
+            def done_cb():
+                notify_cb()
+            
+            res = self.info.download(sel, self.app.base_directory,
+                                     callback=done_cb)
+            if not res:
+                print "FILE_ALREADY_EXISTS"
+                # XXX: NotImplemented
+            else:
+                notify_cb = show_notify(self.widget, _("Downloading..."))
+                self.widget.destroy()
+
+    def on_cancel_clicked(self, w):
+        self.widget.destroy()
+
+    def on_selection_changed(self, w):
+        sel = self.down_list.get_selection().get_selected()[1]
+        print sel
+        if sel:
+            self.down_button.set_sensitive(True)
+        else:
+            self.down_button.set_sensitive(False)
+        
+    def show(self):
+        self.widget.show_all()
+
+    # ---
+
     def _construct(self):
-        pass
+        self.widget = gtk.Dialog(self.info.title,
+                                 parent=self.app.window.widget)
+
+        box = self.widget.vbox
+        hbox = self.widget.action_area
+
+        # Info box
+        tbl = gtk.Table(rows=4, columns=2)
+
+        infoentries = [
+            (_("Etext:"), str(self.info.etext_id)),
+            (_("Title:"), self.info.title),
+            (_("Author:"), self.info.author),
+            (_("Language:"), self.info.language),
+        ]
+
+        for j, (a, b) in enumerate(infoentries):
+            lbl_a = gtk.Label()
+            lbl_a.set_markup(u"<b>%s</b>" % a)
+            lbl_a.set_alignment(0.0, 0.0)
+
+            lbl_b = gtk.Label(b)
+            lbl_b.set_alignment(0.0, 0.0)
+
+            tbl.attach(lbl_a, 0, 1, j, j+1, xoptions=gtk.FILL, xpadding=5)
+            tbl.attach(lbl_b, 1, 2, j, j+1, xoptions=gtk.FILL|gtk.EXPAND,
+                       xpadding=5)
+
+        box.pack_start(tbl, expand=False, fill=True)
+
+        # Download list
+        scroll = gtk.ScrolledWindow()
+        scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_ALWAYS)
+        self.down_list = gtk.TreeView(self.info)
+        scroll.add(self.down_list)
+        box.pack_start(scroll, expand=True, fill=True)
+
+        info_cell = gtk.CellRendererText()
+        info_col = gtk.TreeViewColumn(_("Format"), info_cell, text=1)
+        info_col.set_sort_column_id(1)
+
+        file_cell = gtk.CellRendererText()
+        file_col = gtk.TreeViewColumn(_("File"), file_cell)
+        def pretty_filename(treeviewcolumn, cell, model, iter):
+            url = model.get_value(iter, 0)
+            url = urllib.unquote(url.split('/')[-1])
+            cell.set_property('text', url)
+        file_col.set_cell_data_func(file_cell, pretty_filename)
+        
+        self.down_list.append_column(info_col)
+        self.down_list.append_column(file_col)
+
+        # Action buttons
+        self.down_button = gtk.Button(stock=gtk.STOCK_SAVE)
+        self.cancel_button = gtk.Button(stock=gtk.STOCK_CANCEL)
+
+        hbox.pack_start(self.down_button)
+        hbox.pack_start(self.cancel_button)
 
 class GutenbergSearchWidget(object):
     def __init__(self, app):
         self.app = app
         self.results = GutenbergSearchList()
         self._construct()
+
+        # XXX: debug insert
+        self.results.add("Nietzsche","Thus spake Zarathustra","English",
+                         "Audio book", 19634)
 
         self.search_button.connect("clicked", self.on_search_clicked)
         self.widget_tree.connect("row-activated", self.on_activated)
@@ -118,14 +234,19 @@ class GutenbergSearchWidget(object):
     def on_activated(self, tree, it, column):
         entry = self.results[it]
 
-        if entry[3] == NEXT_ID:
+        if entry[4] == NEXT_ID:
             done_cb = show_notify(self.widget, _("Searching..."))
             self.results.next_page(callback=done_cb)
             return
-        elif entry[3] == PREV_ID:
+        elif entry[4] == PREV_ID:
             done_cb = show_notify(self.widget, _("Searching..."))
             self.results.prev_page(callback=done_cb)
             return
+        else:
+            def on_finish():
+                w = GutenbergDownloadWindow(self.app, info)
+                w.show()
+            info = self.results.get_downloads(it, callback=on_finish)
 
     # ---
 
@@ -139,14 +260,15 @@ class GutenbergSearchWidget(object):
         self.search_button = gtk.Button(_("Search"))
 
         tbl = gtk.Table(rows=3, columns=2)
-        tbl.attach(gtk.Label(_("Title:")), 0, 1, 0, 1,
-                   xoptions=gtk.FILL)
-        tbl.attach(self.search_title, 1, 2, 0, 1,
-                   xoptions=gtk.EXPAND|gtk.FILL)
-        tbl.attach(gtk.Label(_("Author:")), 0, 1, 1, 2,
-                   xoptions=gtk.FILL)
-        tbl.attach(self.search_author, 1, 2, 1, 2,
-                   xoptions=gtk.EXPAND|gtk.FILL)
+
+        entries = [(_("Title:"), self.search_title),
+                   (_("Author:"), self.search_author)]
+        for j, (a, b) in enumerate(entries):
+            lbl = gtk.Label(a)
+            lbl.set_alignment(0.5, 0.5)
+            tbl.attach(lbl, 0, 1, j, j+1, xoptions=gtk.FILL)
+            tbl.attach(b, 1, 2, j, j+1, xoptions=gtk.FILL|gtk.EXPAND)
+        
         box.pack_start(tbl, fill=False, expand=False)
         box.pack_start(self.search_button, fill=False, expand=False)
 
@@ -174,9 +296,15 @@ class GutenbergSearchWidget(object):
         lang_col.set_sort_column_id(2)
         lang_col.set_resizable(True)
 
+        cat_cell = gtk.CellRendererText()
+        cat_col = gtk.TreeViewColumn(_('Category'), lang_cell, text=3)
+        cat_col.set_sort_column_id(3)
+        cat_col.set_resizable(True)
+
         self.widget_tree.append_column(author_col)
         self.widget_tree.append_column(title_col)
         self.widget_tree.append_column(lang_col)
+        self.widget_tree.append_column(cat_col)
 
 class MainWindow(object):
     def __init__(self, app):
