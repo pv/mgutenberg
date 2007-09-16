@@ -1,5 +1,6 @@
 import re, os, sys, shutil, tempfile
 import xml.etree.ElementTree as ET
+from xml.parsers.expat import ExpatError
 
 import gtk
 import gutenbergweb
@@ -20,7 +21,19 @@ def _is_caps_case(x):
         return x[0] == x[0].upper() and x[1] == x[1].lower()
 
 def get_valid_basename(base):
-    valid_ext = ['.txt', '.pdb', '.html']
+    valid_ext = ['.txt',
+                 '.html', '.htm',
+                 '.fb2',
+                 '.chm',
+                 '.rtf',
+                 '.oeb',
+                 '.zip',
+                 '.prc', '.pdb', '.mobi',
+                 '.orb',
+                 '.opf', '.oebzip',
+                 '.tcr',
+                 '.tgz', '.ipk',
+                 ]
     skip_ext = ['.gz', '.bz2', '.tar']
 
     while True:
@@ -52,9 +65,9 @@ class EbookList(gtk.ListStore):
         [(author, title, language, file_name), ...]
     """
     
-    def __init__(self, base_directory):
+    def __init__(self, search_dirs):
         gtk.ListStore.__init__(self, str, str, str, str)
-        self.base_directory = base_directory
+        self.search_dirs = search_dirs
     
     def add(self, author=u"", title=u"", language=u"", file_name=""):
         return self.append((author, title, language, file_name))
@@ -63,6 +76,9 @@ class EbookList(gtk.ListStore):
         self.clear()
 
         def walk_tree(files, d, author_name=""):
+            if not os.path.isdir(d):
+                return
+            
             for path in os.listdir(d):
                 full_path = os.path.join(d, path)
                 if os.path.isdir(full_path):
@@ -98,13 +114,14 @@ class EbookList(gtk.ListStore):
             if callback:
                 callback(True)
         
-        def do_walk_tree(d):
+        def do_walk_tree(dirs):
             files = []
-            walk_tree(files, self.base_directory)
+            for d in dirs:
+                walk_tree(files, d)
             files.sort()
             run_in_gui_thread(really_add, files)
 
-        start_thread(do_walk_tree, self.base_directory)
+        start_thread(do_walk_tree, self.search_dirs)
 
     def sync_fbreader(self, callback=None):
 
@@ -306,7 +323,7 @@ class DownloadInfo(gtk.ListStore):
         if not os.path.isdir(dir_path):
             os.makedirs(dir_path)
 
-        def do_download():
+        def do_download(url):
             h, f = None, None
             try:
                 h = myurlopen(url)
@@ -328,7 +345,7 @@ class DownloadInfo(gtk.ListStore):
             if callback:
                 callback(path)
         
-        run_in_background(do_download, callback=on_finish)
+        run_in_background(do_download, url, callback=on_finish)
 
 _AUTHOR_RES = [
     re.compile(r"^(.*?),\s*\d.*$", re.S),
@@ -362,16 +379,12 @@ def sync_fbreader(file_map, booklist_fn=None, state_fn=None):
     :Parameters:
         file_map : { file_name: (author, title, language), ... }
     """
-    home = os.environ.get('HOME')
+    home = os.path.expanduser("~")
 
     if booklist_fn is None:
-        if home is None:
-            raise RuntimeError(_("Home directory not found"))
         booklist_fn = os.path.join(home, '.FBReader', 'books.xml')
 
     if state_fn is None:
-        if home is None:
-            raise RuntimeError(_("Home directory not found"))
         state_fn = os.path.join(home, '.FBReader', 'state.xml')
 
     seen = {}
@@ -387,6 +400,8 @@ def sync_fbreader(file_map, booklist_fn=None, state_fn=None):
         f = open(booklist_fn, 'r')
         try:
             tree = ET.parse(f)
+        except ExpatError:
+            tree = ET.ElementTree(ET.Element('config'))
         finally:
             f.close()
     else:
@@ -459,6 +474,8 @@ def sync_fbreader(file_map, booklist_fn=None, state_fn=None):
         f = open(state_fn, 'r')
         try:
             tree = ET.parse(f)
+        except ExpatError:
+            tree = ET.ElementTree(ET.Element('config'))
         finally:
             f.close()
     else:
@@ -530,5 +547,130 @@ def sync_fbreader(file_map, booklist_fn=None, state_fn=None):
         out_state.close()
 
 def run_fbreader(path):
+    # XXX: Better support for audio books
     cmd = ['FBReader', path]
     os.spawnvp(os.P_NOWAIT, cmd[0], cmd)
+
+class Config(dict):
+    """
+    Very simple configuration file with basic-type XML object serialization
+    """
+    def __init__(self, schema):
+        home = os.path.expanduser("~")
+        self.file_name = os.path.join(home, '.gutenbrowserc')
+        self.schema = schema
+
+    def _toxml(self, o):
+        if isinstance(o, list):
+            el = ET.Element('list')
+            for x in o:
+                el.append(self._toxml(x))
+            return el
+        elif isinstance(o, dict):
+            el = ET.Element('dict')
+            for k, v in o.iteritems():
+                e = self._toxml(v)
+                e.attrib['key'] = str(k)
+                el.append(e)
+            return el
+        elif isinstance(o, int):
+            return ET.Element('int', dict(value=str(o)))
+        elif isinstance(o, float):
+            return ET.Element('float', dict(value=str(o)))
+        elif isinstance(o, str) or isinstance(o, unicode):
+            return ET.Element('str', dict(value=o))
+        else:
+            raise NotImplementedError
+
+    def _fromxml(self, el):
+        valf = {'int': int, 'str': str, 'float': float}
+
+        if el.tag == 'list':
+            o = []
+            for sel in el:
+                o.append(self._fromxml(sel))
+            return o
+        elif el.tag == 'dict':
+            o = {}
+            for sel in el:
+                k = sel.get('key')
+                if k is None: continue
+                o[k] = self._fromxml(sel)
+            return o
+        elif el.tag in valf:
+            try:
+                return valf[el.tag](el.get('value'))
+            except ValueError:
+                return None
+        else:
+            return None
+
+    def load(self):
+        f = open(self.file_name, 'r')
+        try:
+            tree = ET.parse(f)
+            d = self._fromxml(tree.getroot())
+            self._coerce_schema(d)
+            self.clear()
+            self.update(d)
+        except ExpatError:
+            pass
+        finally:
+            f.close()
+
+    def save(self):
+        f = open(self.file_name, 'w')
+        try:
+            root = self._toxml(self)
+            tree = ET.ElementTree(root)
+            f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+            tree.write(f, encoding='utf-8')
+        finally:
+            f.close()
+
+    def _coerce_schema(self, d):
+        """
+        Coerce config to a schema:
+
+            schema = {'key1': (list, str),
+                      'key2': (dict, str), ...}
+
+        drop non-valid keys.
+        """
+
+        class WalkError(RuntimeError): pass
+        
+        def walk(x, types):
+            if not types:
+                raise WalkError()
+            
+            t = types[0]
+            
+            if not isinstance(x, t):
+                raise WalkError()
+            
+            if t == dict:
+                for k, v in x.iteritems():
+                    if not isinstance(k, str):
+                        raise WalkError()
+                    walk(v, types[1:])
+            elif t == list:
+                for y in x:
+                    walk(y, types[1:])
+            elif len(types) > 1:
+                raise WalkError()
+            else:
+                pass # OK
+
+        for k, v in self.iteritems():
+            try:
+                if k not in self.schema:
+                    raise WalkError()
+
+                types = self.schema[k]
+                if not hasattr(types, '__iter__'):
+                    types = (types,)
+
+                walk(v, types)
+            except WalkError:
+                del d[k]
