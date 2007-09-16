@@ -269,8 +269,7 @@ class EbookListWidget(object):
     
     def on_activated(self, treeview, it, column):
         entry = treeview.get_model()[it]
-        cmd = ['FBReader', entry[3]]
-        os.spawnvp(os.P_NOWAIT, cmd[0], cmd)
+        run_fbreader(entry[3])
 
     def on_map_event(self, widget, ev):
         run_later_in_gui_thread(500,
@@ -483,7 +482,7 @@ class GutenbergDownloadWindow(object):
     def on_down_clicked(self, w):
         sel = self.down_list.get_selection().get_selected()[1]
         if sel:
-            def done_cb(path):
+            def done_cb(path, notify_cb):
                 notify_cb()
                 if isinstance(path, Exception):
                     self.app.error_message(
@@ -494,23 +493,49 @@ class GutenbergDownloadWindow(object):
                         self.info.title,
                         self.info.language,
                         path)
-                    # XXX: Prompt user to read the file, etc?
-                
-            try:
-                self.info.download(sel, self.app.base_directory,
-                                   callback=done_cb)
-                ok = True
-            except OverwriteFileException:
-                # XXX: implement
-                if True:
-                    return
-                self.info.download(sel, self.app.base_directory,
-                                   overwrite=True,
-                                   callback=done_cb)
 
-            notify_cb = self.app.show_notify(self.widget,
-                                             _("Downloading..."))
-            self.widget.destroy()
+                    dlg = gtk.MessageDialog(self.app.window.widget)
+                    dlg.set_markup("<b>%s</b>" % _("Download finished"))
+                    dlg.format_secondary_text(
+                        _("Ebook %s by %s is now downloaded. Do "
+                          "you want to read it?") % (self.info.title,
+                                                     self.info.author))
+                    dlg.add_button(_("Read it"), 1)
+                    dlg.add_button(gtk.STOCK_CANCEL, 0)
+                    def response(dlg, response_id, path):
+                        if response_id:
+                            run_fbreader(path)
+                        dlg.destroy()
+                    dlg.connect("response", response, path)
+                    dlg.show()
+
+            def proceed(selected, overwrite=False):
+                self.info.download(selected,
+                                   self.app.base_directory,
+                                   overwrite=overwrite,
+                                   callback=lambda x: done_cb(x, notify_cb))
+                notify_cb = self.app.show_notify(self.widget,
+                                                 _("Downloading..."))
+                self.widget.destroy()
+                                
+            try:
+                proceed(sel)
+            except OverwriteFileException:
+                dlg = gtk.MessageDialog(self.app.window.widget)
+                dlg.set_markup("<b>%s</b>" % _("Overwrite file?"))
+                dlg.format_secondary_text(
+                    _("Ebook %s by %s appears already to be on your disk. "
+                      "Do you want to overwrite it with a version from "
+                      "Project Gutenberg?") % (self.info.title,
+                                               self.info.author))
+                dlg.add_button(_("Overwrite"), 1)
+                dlg.add_button(gtk.STOCK_CANCEL, 0)
+                def response(dlg, response_id, selected):
+                    if response_id:
+                        proceed(selected, overwrite=True)
+                    dlg.destroy()
+                dlg.connect("response", response, sel)
+                dlg.show()
 
     def on_cancel_clicked(self, w):
         self.widget.destroy()
