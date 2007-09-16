@@ -32,7 +32,7 @@ class GutenbrowseApp(AppBase):
         def done_cb():
             end_notify()
             self.window.ebook_list.thaw()
-
+    
         end_notify = self.show_notify(self.window.widget,
                                       _("Finding books..."))
         self.window.ebook_list.freeze()
@@ -184,7 +184,8 @@ class GutenbergDownloadWindow(object):
                     self.info.title,
                     self.info.language,
                     path)
-            
+
+            # XXX: Error handling
             res = self.info.download(sel, self.app.base_directory,
                                      callback=done_cb)
             if not res:
@@ -284,6 +285,7 @@ class GutenbergSearchWidget(object):
         self.widget_tree.connect("row-activated", self.on_activated)
 
     def on_search_clicked(self, btn):
+        # XXX: Error handling
         done_cb = self.app.show_notify(self.widget, _("Searching..."))
         self.results.new_search(
             self.search_author.get_text(),
@@ -294,14 +296,17 @@ class GutenbergSearchWidget(object):
         entry = self.results[it]
 
         if entry[4] == NEXT_ID:
+            # XXX: Error handling
             done_cb = self.app.show_notify(self.widget, _("Searching..."))
             self.results.next_page(callback=done_cb)
             return
         elif entry[4] == PREV_ID:
+            # XXX: Error handling
             done_cb = self.app.show_notify(self.widget, _("Searching..."))
             self.results.prev_page(callback=done_cb)
             return
         else:
+            # XXX: Error handling
             notify_cb = self.app.show_notify(self.widget,
                                              _("Fetching information..."))
             def on_finish():
