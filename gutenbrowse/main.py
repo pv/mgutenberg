@@ -277,10 +277,6 @@ class GutenbergSearchWidget(object):
         self.results = GutenbergSearchList()
         self._construct()
 
-        # XXX: debug insert
-        self.results.add("Nietzsche","Thus spake Zarathustra","English",
-                         "Audio book", 19634)
-
         self.search_button.connect("clicked", self.on_search_clicked)
         self.widget_tree.connect("row-activated", self.on_activated)
 
@@ -379,6 +375,52 @@ class GutenbergSearchWidget(object):
         self.widget_tree.append_column(cat_col)
 
 class MainWindow(object):
+
+
+    if not MAEMO:
+        UI_XMLS = ["""
+        <ui>
+          <menubar name="menu_bar">
+            <menu name="file" action="file">
+              <menuitem action="fetch_url" />
+              <menuitem action="fetch_file" />
+              <separator/>
+              <menuitem action="read" />
+              <menuitem action="remove" />
+              <separator name="quit_sep" />
+              <menuitem name="quit" action="quit" />
+            </menu>
+            <menu action="tools">
+              <menuitem action="update_fbreader" />
+            </menu>
+          </menubar>
+          <popup name="ebook_popup">
+            <menuitem action="read" />
+            <menuitem action="remove" />
+          </popup>
+        </ui>
+        """]
+    else:
+        UI_XMLS = ["""
+        <ui>
+          <popup name="menu_bar">
+            <menuitem action="fetch_url" />
+            <menuitem action="fetch_file" />
+            <separator/>
+            <menuitem action="read" />
+            <menuitem action="remove" />
+            <separator name="quit_sep" />
+            <menuitem action="update_fbreader" />
+            <separator name="quit_sep" />
+            <menuitem name="quit" action="quit" />
+          </popup>
+          <popup name="ebook_popup">
+            <menuitem action="read" />
+            <menuitem action="remove" />
+          </popup>
+        </ui>
+        """]
+    
     def __init__(self, app):
         self.app = app
 
@@ -390,6 +432,36 @@ class MainWindow(object):
 
     def show_all(self):
         self.widget.show_all()
+
+    # ---
+
+    def on_action_fetch_url(self, action):
+        pass
+    
+    def on_action_fetch_file(self, action):
+        pass
+    
+    def on_action_read(self, action):
+        pass
+    
+    def on_action_remove(self, action):
+        pass
+    
+    def on_action_update(self, action):
+        pass
+
+    def on_action_update_fbreader(self, action):
+        def on_finish():
+            notify_cb()
+
+        notify_cb = self.app.show_notify(self.widget,
+                                         _("Synchronizing FBReader..."))
+        self.app.ebook_list.sync_fbreader(callback=on_finish)
+
+    def on_action_quit(self, action):
+        gtk.main_quit()
+    
+    # ---
 
     def _construct(self):
         # Window
@@ -417,7 +489,38 @@ class MainWindow(object):
 
         self.gutenberg_search.search_button.grab_default()
 
-        # Menu
+        # Menu &c
+        actiongroup = gtk.ActionGroup('actiongroup')
+        actiongroup.add_actions([
+            ('file', None, _("_File")),
+            ('fetch_url', None, _("_Fetch URL..."), None,
+             None, self.on_action_fetch_url),
+            ('fetch_file', None, _("_Fetch file..."), None,
+             None, self.on_action_fetch_file),
+            ('read', None, _("_Read"), None,
+             None, self.on_action_read),
+            ('remove', None, _("_Remove..."), None,
+             None, self.on_action_remove),
+            ('quit', gtk.STOCK_QUIT, _("_Quit"), None,
+             None, self.on_action_quit),
+            ('tools', None, _("_Tools")),
+            ('update_fbreader', None, _("_Update FBReader book list"), None,
+             None, self.on_action_update_fbreader),
+        ])
+        
+        self.uim = gtk.UIManager()
+        self.uim.insert_action_group(actiongroup, 0)
+        for xml in self.UI_XMLS:
+            self.uim.add_ui_from_string(xml)
+
+        menu_bar = self.uim.get_widget('/menu_bar')
+
+        if MAEMO:
+            self.widget.set_menu(menu_bar)
+        else:
+            self.widget.add_accel_group(self.uim.get_accel_group())
+            vbox.pack_start(menu_bar, fill=True, expand=False)
+            vbox.reorder_child(menu_bar, 0)
 
         # Ebook context menu
 
