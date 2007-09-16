@@ -16,23 +16,46 @@ except ImportError:
     AppBase = object
     Window = gtk.Window
 
+
+CONFIG_SCHEMA = {
+    'search_dirs': (list, str),
+    'save_dir': str,
+}
+
 def main():
     p = optparse.OptionParser()
     options, args = p.parse_args()
-    
-    app = GutenbrowseApp(args[0])
+
+    # Config & defaults
+    config = Config(CONFIG_SCHEMA)
+    try:
+        config.load()
+    except IOError:
+        pass
+    if MAEMO:
+        sdirs = ['/media/mmc1', '/media/mmc2', '/home/user/MyDocs/.documents']
+        config.setdefault('search_dirs', sdirs)
+        # XXX: Don't hardcode the save dir like this!
+        config.setdefault('save_dir', '/media/mmc1/Books')
+    else:
+        sdirs = [os.path.join(os.path.expanduser("~"), "Desktop", "Books")]
+        config.setdefault('search_dirs', sdirs)
+        config.setdefault('save_dir', sdirs[0])
+
+    # Run
+    app = GutenbrowseApp(config)
     app.run()
 
 class GutenbrowseApp(AppBase):
-    def __init__(self, base_directory):
+    def __init__(self, config):
         AppBase.__init__(self)
         
         # XXX: App configuration: default base directory
         
         # XXX: Separate base directory from search directories
-        
-        self.base_directory = base_directory
-        self.ebook_list = EbookList(base_directory)
+
+        self.config = config
+        self.ebook_list = EbookList(config['search_dirs'])
         self.window = MainWindow(self)
         
         if MAEMO:
@@ -79,6 +102,10 @@ class GutenbrowseApp(AppBase):
         
         gtk.gdk.threads_init()
         gtk.main()
+
+    def quit(self):
+        self.config.save()
+        gtk.main_quit()
 
 class MainWindow(object):
 
@@ -167,7 +194,7 @@ class MainWindow(object):
         self.app.ebook_list.sync_fbreader(callback=on_finish)
 
     def on_action_quit(self, action):
-        gtk.main_quit()
+        self.app.quit()
     
     # ---
 
@@ -240,7 +267,7 @@ class MainWindow(object):
     #-- Signals
 
     def on_destroy(self, ev):
-        gtk.main_quit()
+        self.app.quit()
 
 class EbookListWidget(object):
     def __init__(self, app):
@@ -511,7 +538,7 @@ class GutenbergDownloadWindow(object):
 
             def proceed(selected, overwrite=False):
                 self.info.download(selected,
-                                   self.app.base_directory,
+                                   self.app.config['save_dir'],
                                    overwrite=overwrite,
                                    callback=lambda x: done_cb(x, notify_cb))
                 notify_cb = self.app.show_notify(self.widget,
