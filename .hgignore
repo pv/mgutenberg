@@ -7,3 +7,7 @@ dist
 *.orig
 *.rej
 footest
+debian/gutenbrowse
+*.debhelper
+*.substvars
+debian/files
