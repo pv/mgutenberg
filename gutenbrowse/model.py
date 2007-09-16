@@ -6,6 +6,7 @@ import gutenbergweb
 
 from gettext import gettext as _
 from guithread import *
+from util import *
 
 class OverwriteFileException(Exception): pass
 
@@ -56,7 +57,7 @@ class EbookList(gtk.ListStore):
         self.base_directory = base_directory
     
     def add(self, author=u"", title=u"", language=u"", file_name=""):
-        self.append((author, title, language, file_name))
+        return self.append((author, title, language, file_name))
 
     def refresh(self, callback=None):
         self.clear()
@@ -136,7 +137,7 @@ class GutenbergSearchList(gtk.ListStore):
         
     def add(self, author=u"", title=u"", language=u"",
             category=u"", etext_id=-1):
-        self.append((author, title, language, category, etext_id))
+        return self.append((author, title, language, category, etext_id))
         
     def new_search(self, author="", title="", callback=None):
         self.last_search = (author, title)
@@ -247,7 +248,7 @@ class DownloadInfo(gtk.ListStore):
         gtk.ListStore.__init__(self, str, str)
 
     def add(self, url, format_info):
-        self.append((url, format_info))
+        return self.append((url, format_info))
 
     def download(self, it, base_directory, overwrite=False, callback=None):
         """
@@ -527,3 +528,7 @@ def sync_fbreader(file_map, booklist_fn=None, state_fn=None):
     finally:
         f.close()
         out_state.close()
+
+def run_fbreader(path):
+    cmd = ['FBReader', path]
+    os.spawnvp(os.P_NOWAIT, cmd[0], cmd)
