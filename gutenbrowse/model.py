@@ -111,6 +111,7 @@ class GutenbergSearchList(gtk.ListStore):
         self.pageno = 0
         self.max_pageno = None
         self.last_search = None
+        self.last_result = None
         
     def add(self, author=u"", title=u"", language=u"",
             category=u"", etext_id=-1):
@@ -138,9 +139,10 @@ class GutenbergSearchList(gtk.ListStore):
         def on_finish(r):
             if not r:
                 self.max_pageno = self.pageno
+                r = self.last_result # remove the dummy navigation entry
             else:
                 self.pageno += 1
-                self._repopulate(r)
+            self._repopulate(r)
             if callback:
                 callback()
 
@@ -165,8 +167,9 @@ class GutenbergSearchList(gtk.ListStore):
                           callback=on_finish)
     
     def _repopulate(self, r):
+        self.last_result = r
         self.clear()
-
+        
         if self.pageno > 0:
             self.add(_('(Previous...)'), '', '', '', PREV_ID)
 
@@ -263,9 +266,11 @@ class DownloadInfo(gtk.ListStore):
             finally:
                 h.close()
                 f.close()
+            return path
 
-        def on_finish(r):
-            if callback: callback()
+        def on_finish(path):
+            if callback:
+                callback(path)
         
         run_in_background(do_download, callback=on_finish)
         return True
