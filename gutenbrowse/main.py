@@ -60,8 +60,11 @@ class EbookListWidget(object):
     def __init__(self, app):
         self.app = app
         self.filter_text = ''
-        self.store = app.ebook_list.filter_new()
-        self.store.set_visible_func(self.filter_func)
+
+        self.store = app.ebook_list
+        self.filter = None
+        self.filtered_store = None
+        
         self._construct()
 
         self.filter_runner = SingleRunner()
@@ -84,12 +87,30 @@ class EbookListWidget(object):
         os.spawnvp(os.P_NOWAIT, cmd[0], cmd)
 
     def on_map_event(self, widget, ev):
-        run_later_in_gui_thread(600,
+        run_later_in_gui_thread(500,
                                 self.widget_tree.columns_autosize)
 
     def on_filter_changed(self, w):
-        self.filter_text = self.filter_entry.get_text()
-        self.filter_runner.run_later_in_gui_thread(500, self.store.refilter)
+        def do_refilter():
+            if len(self.filter_text) <= 2:
+                self.filter = None
+                self.filtered_store = None
+                if self.widget_tree.get_model() is not self.store:
+                    self.widget_tree.set_model(self.store)
+            else:
+                if not self.filter:
+                    self.filter = self.store.filter_new()
+                    self.filtered_store = gtk.TreeModelSort(self.filter)
+                    self.filter.set_visible_func(self.filter_func)
+                
+                self.filter.refilter()
+                if self.widget_tree.get_model() is not self.filtered_store:
+                    self.widget_tree.set_model(self.filtered_store)
+        
+        self.filter_text = self.filter_entry.get_text().lower()
+
+        delay = 1000 if MAEMO else 500
+        self.filter_runner.run_later_in_gui_thread(delay, do_refilter)
 
     def filter_func(self, model, it, data=None):
         if not self.filter_text: return True
