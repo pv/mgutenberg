@@ -291,6 +291,10 @@ class DownloadInfo(gtk.ListStore):
         except IndexError:
             ext = ''
 
+        if not ext and 'plucker' in format:
+            ext = 'pdb'
+            url_base += '.pdb'
+
         if self.author and self.title and self.language:
             base_name = u"%s - %s [%s]" % (author,
                                            self.title,
