@@ -1,0 +1,11 @@
+[Desktop Entry]
+Encoding=UTF-8
+Type=Application
+Name=Gutenbrowse
+Comment=E-book organizer
+Exec=gutenbrowse
+Icon=gutenbrowse
+StartupNotify=true
+X-HildonDesk-ShowInToolbar=true
+X-Window-Icon=gutenbrowse
+X-Window-Icon-Dimmed=gutenbrowse

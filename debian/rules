@@ -26,6 +26,20 @@ install: build
 
 	$(PYTHON2.5) setup.py install --root=debian/$(PKG)
 
+	install -d debian/$(PKG)/usr/share/applications/hildon
+	install -m 644 \
+		debian/maemo/desktop \
+		debian/$(PKG)/usr/share/applications/hildon/gutenbrowse.desktop
+
+	install -d debian/$(PKG)/etc/osso-backup/applications
+	install -m 644 \
+		debian/maemo/backup \
+		debian/$(PKG)/etc/osso-backup/applications/gutenbrowse.conf
+
+	install -d debian/$(PKG)/usr/share/pixmaps
+	install -m 644 \
+		gutenbrowse.png debian/$(PKG)/usr/share/pixmaps
+
 # Build architecture-independent files here.
 binary-indep: build install
 	dh_testdir -i
