@@ -345,19 +345,24 @@ def sync_fbreader(file_map, booklist_fn=None, state_fn=None):
     # -- Manipulate book list
     #
 
-    f = open(booklist_fn, 'r')
-    try:
-        tree = ET.parse(f)
-    finally:
-        f.close()
+    if os.path.isfile(booklist_fn):
+        f = open(booklist_fn, 'r')
+        try:
+            tree = ET.parse(f)
+        finally:
+            f.close()
+    else:
+        d = os.path.dirname(booklist_fn)
+        if not os.path.isdir(d):
+            os.makedirs(d)
+        tree = ET.ElementTree(ET.Element('config'))
 
     root = tree.getroot()
 
     # Update entries
     for group in root.getiterator('group'):
         fn = group.get('name')
-        if not os.path.isfile(fn):
-            print fn
+        
         if fn in file_map:
             seen[fn] = True
             base = get_valid_basename(os.path.basename(fn))
@@ -412,12 +417,18 @@ def sync_fbreader(file_map, booklist_fn=None, state_fn=None):
     # -- Manipulate state
     #
 
-    f = open(state_fn, 'r')
-    try:
-        tree = ET.parse(f)
-    finally:
-        f.close()
-
+    if os.path.isfile(state_fn):
+        f = open(state_fn, 'r')
+        try:
+            tree = ET.parse(f)
+        finally:
+            f.close()
+    else:
+        d = os.path.dirname(state_fn)
+        if not os.path.isdir(d):
+            os.makedirs(d)
+        tree = ET.ElementTree(ET.Element('config'))
+    
     root = tree.getroot()
     try:
         booklist = [g for g in root.findall('group')
