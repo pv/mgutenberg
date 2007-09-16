@@ -33,10 +33,18 @@ def start_thread(func, *a):
     threading.Thread(target=func, args=a).start()
 
 def run_in_background(func, *a, **kw):
-    """Run func in background and call callback after it completes."""
+    """
+    Run func in background and call callback after it completes.
+
+    Callback is called with return value or, if exception was raised,
+    the exception as an argument.
+    """
     callback = kw.pop('callback')
     def runner():
-        result = func(*a, **kw)
+        try:
+            result = func(*a, **kw)
+        except Exception, e:
+            result = e
         run_in_gui_thread(callback, result)
     start_thread(runner)
 
