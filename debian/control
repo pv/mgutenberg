@@ -1,0 +1,13 @@
+Source: gutenbrowse
+Section: user/tools
+Priority: optional
+Maintainer: Pauli Virtanen <pauli@iki.fi>
+Build-Depends: debhelper (>> 3.0.0), python2.5
+Standards-Version: 3.6.2
+
+Package: gutenbrowse
+Architecture: all
+Depends: python2.5-xml, python2.5, python2.5-hildon, fbreader
+Description: E-book organizer
+  E-book organizer that can also search and download books directly
+  from Project Gutenberg.
