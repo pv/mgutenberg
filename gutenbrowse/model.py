@@ -1,4 +1,4 @@
-import re, os, sys, shutil, urllib, tempfile
+import re, os, sys, shutil, tempfile
 import xml.etree.ElementTree as ET
 
 import gtk
@@ -6,6 +6,9 @@ import gutenbergweb
 
 from gettext import gettext as _
 from guithread import *
+
+class OverwriteFileException(Exception): pass
+
 
 def _is_caps_case(x):
     if len(x) < 1:
@@ -92,7 +95,7 @@ class EbookList(gtk.ListStore):
             for x in r:
                 self.append(x)
             if callback:
-                callback()
+                callback(True)
         
         def do_walk_tree(d):
             files = []
@@ -105,7 +108,8 @@ class EbookList(gtk.ListStore):
     def sync_fbreader(self, callback=None):
 
         def on_finish(r):
-            if callback: callback()
+            if callback:
+                callback(r)
 
         file_map = dict((os.path.realpath(r[3]),
                          (r[0], r[1], r[2])) for r in self)
@@ -140,11 +144,14 @@ class GutenbergSearchList(gtk.ListStore):
         self.max_pageno = None
 
         def on_finish(r):
+            if isinstance(r, Exception):
+                callback(r)
+                return
             if not r:
                 self.max_pageno = 0
             self._repopulate(r)
             if callback:
-                callback()
+                callback(True)
 
         run_in_background(gutenbergweb.search, author, title, pageno=0,
                           callback=on_finish)
@@ -154,6 +161,9 @@ class GutenbergSearchList(gtk.ListStore):
             return # nothing to do
         
         def on_finish(r):
+            if isinstance(r, Exception):
+                callback(r)
+                return
             if not r:
                 self.max_pageno = self.pageno
                 r = self.last_result # remove the dummy navigation entry
@@ -161,7 +171,7 @@ class GutenbergSearchList(gtk.ListStore):
                 self.pageno += 1
             self._repopulate(r)
             if callback:
-                callback()
+                callback(True)
 
         run_in_background(gutenbergweb.search, self.last_search[0],
                           self.last_search[1], pageno=self.pageno + 1,
@@ -174,10 +184,13 @@ class GutenbergSearchList(gtk.ListStore):
             return
         
         def on_finish(r):
+            if isinstance(r, Exception):
+                callback(r)
+                return
             self.pageno -= 1
             self._repopulate(r)
             if callback:
-                callback()
+                callback(True)
         
         run_in_background(gutenbergweb.search, self.last_search[0],
                           self.last_search[1], pageno=self.pageno - 1,
@@ -201,13 +214,17 @@ class GutenbergSearchList(gtk.ListStore):
         info = DownloadInfo(author, title, language, category, etext_id)
 
         def on_finish(result):
+            if isinstance(result, Exception):
+                callback(result)
+                return
+                
             r, infodict = result
             info.category = infodict['category']
             for url, format, encoding, compression in r:
                 msg = [x for x in format, encoding, compression if x]
                 info.add(url, ', '.join(msg))
             if callback:
-                callback()
+                callback(info)
 
         run_in_background(gutenbergweb.etext_info, etext_id,
                           callback=on_finish)
@@ -233,6 +250,19 @@ class DownloadInfo(gtk.ListStore):
         self.append((url, format_info))
 
     def download(self, it, base_directory, overwrite=False, callback=None):
+        """
+        :Parameters:
+            it : gtk tree iterator
+                Which item to download
+            base_directory : str
+                Directory under which to download
+            overwrite : bool
+                Allow overwriting existing files
+            callback: callable(path)
+                Function to call when download finished.
+                ``path`` is the name of the new file, if the download was
+                successful, and None if it download failed.
+        """
         url, format = self[it]
 
         author = clean_filename(clean_author(self.author))
@@ -267,30 +297,37 @@ class DownloadInfo(gtk.ListStore):
             path = os.path.join(base_directory, author, file_name)
         else:
             path = os.path.join(base_directory, file_name)
-        dir_path = os.path.dirname(path)
 
+        if os.path.isfile(path) and not overwrite:
+            raise OverwriteFileException()
+        
+        dir_path = os.path.dirname(path)
         if not os.path.isdir(dir_path):
             os.makedirs(dir_path)
 
-        if os.path.isfile(path) and not overwrite:
-            return False
-        
         def do_download():
-            h = urllib.urlopen(url)
-            f = open(path, 'w')
+            h, f = None, None
             try:
+                h = myurlopen(url)
+                f = open(path, 'w')
                 shutil.copyfileobj(h, f)
+            except IOError, e:
+                # fetch failed; remove if exists and signal error
+                if os.path.isfile(path):
+                    os.remove(path)
+                
+                return e
             finally:
-                h.close()
-                f.close()
+                if h is not None: h.close()
+                if f is not None: f.close()
+                
             return path
-
+        
         def on_finish(path):
             if callback:
                 callback(path)
         
         run_in_background(do_download, callback=on_finish)
-        return True
 
 _AUTHOR_RES = [
     re.compile(r"^(.*?),\s*\d.*$", re.S),
@@ -328,12 +365,12 @@ def sync_fbreader(file_map, booklist_fn=None, state_fn=None):
 
     if booklist_fn is None:
         if home is None:
-            return False # can't
+            raise RuntimeError(_("Home directory not found"))
         booklist_fn = os.path.join(home, '.FBReader', 'books.xml')
 
     if state_fn is None:
         if home is None:
-            return False # can't
+            raise RuntimeError(_("Home directory not found"))
         state_fn = os.path.join(home, '.FBReader', 'state.xml')
 
     seen = {}
@@ -490,5 +527,3 @@ def sync_fbreader(file_map, booklist_fn=None, state_fn=None):
     finally:
         f.close()
         out_state.close()
-
-    return True
