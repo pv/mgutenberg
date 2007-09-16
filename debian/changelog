@@ -1,3 +1,9 @@
+gutenbrowse (0.1.1-0.1) gutsy; urgency=low
+
+  * New version.
+
+ -- Pauli Virtanen <pauli.virtanen@iki.fi>  Mon, 17 Sep 2007 00:36:10 +0300
+
 gutenbrowse (0.1-0.1) gutsy; urgency=low
 
   * First release.
