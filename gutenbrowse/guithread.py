@@ -39,3 +39,20 @@ def run_in_background(func, *a, **kw):
         result = func(*a, **kw)
         run_in_gui_thread(callback, result)
     start_thread(runner)
+
+class SingleRunner(object):
+    def __init__(self):
+        self.scheduled_id = 0
+
+    def run_func(self, run_id, func, *a, **kw):
+        if run_id >= self.scheduled_id:
+            return func(*a, **kw)
+
+    def run_in_gui_thread(self, func, *a, **kw):
+        self.scheduled_id += 1
+        run_in_gui_thread(self.run_func, self.scheduled_id, func, *a, **kw)
+
+    def run_later_in_gui_thread(self, delay, func, *a, **kw):
+        self.scheduled_id += 1
+        run_later_in_gui_thread(delay, self.run_func, self.scheduled_id,
+                                func, *a, **kw)
