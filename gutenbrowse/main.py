@@ -46,14 +46,13 @@ def main():
     app = GutenbrowseApp(config)
     app.run()
 
+
+# XXX: revise those deeply nested callbacks; try to reduce nesting of code
+
 class GutenbrowseApp(AppBase):
     def __init__(self, config):
         AppBase.__init__(self)
         
-        # XXX: App configuration: default base directory
-        
-        # XXX: Separate base directory from search directories
-
         self.config = config
         self.ebook_list = EbookList(config['search_dirs'])
         self.window = MainWindow(self)
@@ -169,19 +168,19 @@ class MainWindow(object):
     # ---
 
     def on_action_fetch_url(self, action):
-        pass
+        pass # XXX: implement
     
     def on_action_fetch_file(self, action):
-        pass
+        pass # XXX: implement
     
     def on_action_read(self, action):
-        pass
+        pass # XXX: implement
     
     def on_action_remove(self, action):
-        pass
+        pass # XXX: implement
     
     def on_action_update(self, action):
-        pass
+        pass # XXX: implement
 
     def on_action_update_fbreader(self, action):
         def on_finish(r):
@@ -195,7 +194,10 @@ class MainWindow(object):
 
     def on_action_quit(self, action):
         self.app.quit()
-    
+
+    def on_destroy(self, ev):
+        self.app.quit()
+
     # ---
 
     def _construct(self):
@@ -259,15 +261,12 @@ class MainWindow(object):
 
         # Ebook context menu
 
+        # XXX: implement
+
         # Status bar (non-Maemo)
         if not MAEMO:
             self.statusbar = gtk.Statusbar()
             vbox.pack_start(self.statusbar, expand=False, fill=True)
-
-    #-- Signals
-
-    def on_destroy(self, ev):
-        self.app.quit()
 
 class EbookListWidget(object):
     def __init__(self, app):
