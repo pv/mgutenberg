@@ -1,3 +1,3 @@
 #!/usr/bin/env python
-import gutenbrowse
-gutenbrowse.main()
+from gutenbrowse.main import main
+main()
