@@ -1,5 +1,5 @@
 import re, os, sys, shutil, urllib, tempfile
-import elementtree.ElementTree as ET
+import xml.etree.ElementTree as ET
 
 import gtk
 import gutenbergweb
