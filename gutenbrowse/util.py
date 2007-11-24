@@ -29,4 +29,28 @@ def myurlopen(url, data=None, proxies=None):
     else:
         return opener.open(url, data)
 
-__all__ = ['myurlopen']
+def unique(s, key=None):
+    """
+    Return unique entries in s
+
+    :Returns:
+        A sequence of unique entries of s.
+        If `key` is given, return entries whose key(s) is unique.
+        Order is preserved, and first of duplicate entries is picked.
+    """
+    
+    if key is not None:
+        keys = (key(x) for x in s)
+    else:
+        keys = s
+    
+    seen = {}
+    s2 = []
+    for x, k in zip(s, keys):
+        if k in seen: continue
+        seen[k] = True
+        s2.append(x)
+    
+    return s2
+
+__all__ = ['myurlopen', 'unique']

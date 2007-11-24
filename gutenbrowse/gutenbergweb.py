@@ -39,15 +39,18 @@ def search(author=None, title=None, etextnr=None, pageno=0):
         title = ' '
     if not etextnr:
         etextnr = ''
-
+    
     data = _urllib.urlencode([('author', unicode(author)),
                               ('title', unicode(title)),
                               ('etextnr', unicode(etextnr)),
                               ('pageno', unicode(pageno))])
     url = _SEARCH_URL + '?' + data
-
+    
     output = _fetch_page(url)
-    return _parse_gutenberg_search_html(output)
+    entries = _parse_gutenberg_search_html(output)
+    
+    # NB. Gutenberg search sometimes return duplicate entries
+    return unique(entries, key=lambda x: x[0])
 
 def etext_info(etext_id):
     """
