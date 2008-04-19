@@ -540,6 +540,7 @@ class GutenbergDownloadWindow(object):
                                    self.app.config['save_dir'],
                                    overwrite=overwrite,
                                    callback=lambda x: done_cb(x, notify_cb))
+                # XXX: Download notify doesn't work on Maemo??
                 notify_cb = self.app.show_notify(self.widget,
                                                  _("Downloading..."))
                 self.widget.destroy()
