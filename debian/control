@@ -1,7 +1,7 @@
 Source: gutenbrowse
 Section: user/tools
 Priority: optional
-Maintainer: Pauli Virtanen <pauli@iki.fi>
+Maintainer: Pauli Virtanen <pav@iki.fi>
 Build-Depends: debhelper (>> 3.0.0), python2.5
 Standards-Version: 3.6.2
 
