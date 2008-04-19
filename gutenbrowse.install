@@ -1,0 +1,20 @@
+[install]
+package = gutenbrowse
+
+[catalogues]
+catalogues = gutenbrowse; extras; fbreader
+
+[gutenbrowse]
+name = Gutenbrowse etc. catalogue
+uri = http://www.iki.fi/pav/repo
+components = maemo
+
+[extras]
+name = maemo Extras catalogue
+uri = http://repository.maemo.org/extras
+components = free non-free
+
+[fbreader]
+name = FBReader Repository
+uri = http://www.fbreader.org/maemo
+components = user

@@ -7,7 +7,38 @@ Standards-Version: 3.6.2
 
 Package: gutenbrowse
 Architecture: all
-Depends: python2.5-xml, python2.5, python2.5-hildon, fbreader | fbreader-maemo2
+Depends: python2.5-xml, python2.5, python2.5-hildon
+Recommends: fbreader | fbreader-maemo2
+XB-Maemo-Icon-26:
+  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
+  SUVORK5CYII=
 Description: E-book organizer
   E-book organizer that can also search and download books directly
   from Project Gutenberg.
