@@ -7,8 +7,7 @@ Standards-Version: 3.6.2
 
 Package: gutenbrowse
 Architecture: all
-Depends: python2.5-xml, python2.5, python2.5-hildon
-Recommends: fbreader | fbreader-maemo2
+Depends: python2.5-xml, python2.5, python2.5-hildon, fbreader | fbreader-maemo2
 XB-Maemo-Icon-26:
   iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAYAAACpSkzOAAAABHNCSVQICAgIfAhkiAAAAAlwSFlz
   AAAFEwAABRMBWjvKTwAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAXBSURB
