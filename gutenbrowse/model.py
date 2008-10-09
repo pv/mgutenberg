@@ -78,8 +78,14 @@ class EbookList(gtk.ListStore):
         def walk_tree(files, d, author_name=""):
             if not os.path.isdir(d):
                 return
+
+            try:
+                paths = os.listdir(d)
+            except OSError:
+                # permission error, etc.
+                return
             
-            for path in os.listdir(d):
+            for path in paths:
                 full_path = os.path.join(d, path)
                 if os.path.isdir(full_path):
                     # recurse into a directory
