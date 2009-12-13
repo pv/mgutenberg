@@ -450,13 +450,10 @@ class GutenbergSearchWidget(object):
                    ]
         for j, (a, b) in enumerate(entries):
             lbl = gtk.Label(a)
-            lbl.set_alignment(0.5, 0.5)
+            lbl.set_alignment(0., 0.5)
             tbl.attach(lbl, 0, 1, j, j+1, xoptions=gtk.FILL)
             tbl.attach(b, 1, 2, j, j+1, xoptions=gtk.FILL|gtk.EXPAND)
         
-        box.pack_start(tbl, fill=False, expand=False)
-        box.pack_start(self.search_button, fill=False, expand=False)
-
         if MAEMO:
             scroll = hildon.PannableArea()
             scroll.set_properties(
@@ -465,6 +462,11 @@ class GutenbergSearchWidget(object):
         else:
             scroll = gtk.ScrolledWindow()
             scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_ALWAYS)
+
+        hbox = gtk.HBox()
+        hbox.pack_start(tbl, fill=True, expand=True)
+        hbox.pack_start(self.search_button, fill=False, expand=False)
+        box.pack_start(hbox, fill=False, expand=False)
         box.pack_start(scroll, fill=True, expand=True)
 
         self.widget_tree = gtk.TreeView(self.results)
