@@ -59,9 +59,9 @@ class MGutenbergApp(AppBase):
             self.window.ebook_list.thaw()
             if isinstance(r, Exception):
                 self.app.error_message(_("Error refreshing book list"), r)
-        
+
         end_notify = self.show_notify(self.window.widget,
-                                      _("Finding books..."))
+                                      _("Looking for books..."))
         self.window.ebook_list.freeze()
         self.ebook_list.refresh(callback=done_cb)
 
@@ -87,6 +87,15 @@ class MGutenbergApp(AppBase):
             def finish():
                 self.window.statusbar.pop(0)
             return finish
+
+    def show_notify_working(self, widget):
+        if MAEMO:
+            hildon.hildon_gtk_window_set_progress_indicator(widget, 1)
+            def cb():
+                hildon.hildon_gtk_window_set_progress_indicator(widget, 0)
+            return cb
+        else:
+            return self.show_notify(widget, _("Working..."))
 
     def start_reader(self, filename):
         sub = reader.run(self, filename)
@@ -226,9 +235,11 @@ class MainWindow(object):
 
     def on_book_button_click(self, widget):
         self.notebook.set_current_page(0)
+        self.on_notebook_switch_page(None, None, 0)
 
     def on_gutenberg_button_click(self, widget):
         self.notebook.set_current_page(1)
+        self.on_notebook_switch_page(None, None, 1)
 
     def on_notebook_switch_page(self, notebook, page, page_num):
         self.book_button.handler_block_by_func(self.on_book_button_click)
