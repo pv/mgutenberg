@@ -31,9 +31,6 @@ class ReaderWindow(object):
         self.widget.connect("destroy", self.on_destroy)
         self.textscroll.get_vadjustment().connect("value-changed",
                                                   self.on_scrolled)
-        self._scale_update = \
-                           self.pos_scale.connect("change-value",
-                                                  self.on_scale_change_value)
 
         # Click events
         self.textscroll.add_events(gtk.gdk.BUTTON_RELEASE_MASK
@@ -86,13 +83,6 @@ class ReaderWindow(object):
         hbox = gtk.HBox()
         box.pack_end(hbox, fill=True, expand=False)
 
-        self.pos_scale = gtk.HScale()
-        self.pos_scale.set_properties(
-            draw_value=False
-            )
-        self.pos_scale.set_range(0, self.textbuffer.get_end_iter().get_offset())
-        hbox.pack_start(self.pos_scale, fill=True, expand=True)
-
         self.info = gtk.Label()
         self.info.set_alignment(0.95, 0.5)
         hbox.pack_end(self.info, fill=True, expand=False)
@@ -115,20 +105,8 @@ class ReaderWindow(object):
 
         it = self.textview.get_iter_at_location(rect.x, rect.y)
 
-        # Update slider
-        self.pos_scale.handler_block(self._scale_update)
-        self.pos_scale.set_value(it.get_offset())
-        self.pos_scale.handler_unblock(self._scale_update)
-
         # Save position
         self.app.config['positions'][self.filename] = it.get_offset()
-
-    def on_scale_change_value(self, range, scroll, value):
-        self.textview.scroll_to_iter(
-            self.textbuffer.get_iter_at_offset(int(value)), 0, use_align=True)
-
-        self._update_info_schedule.run_later_in_gui_thread(
-            100, self._update_info)
 
     def on_scrolled(self, adj):
         self._update_info_schedule.run_later_in_gui_thread(
