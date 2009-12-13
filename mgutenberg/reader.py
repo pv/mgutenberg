@@ -93,6 +93,30 @@ class ReaderWindow(object):
         self.info.set_alignment(0.95, 0.5)
         hbox.pack_end(self.info, fill=True, expand=False)
 
+        if MAEMO:
+            self._construct_menu_maemo()
+
+    def on_toggle_portrait(self, widget):
+        if self.portrait_button.get_active():
+            hildon.hildon_gtk_window_set_portrait_flags(
+                self.widget,
+                hildon.PORTRAIT_MODE_SUPPORT|hildon.PORTRAIT_MODE_REQUEST)
+        else:
+            hildon.hildon_gtk_window_set_portrait_flags(
+                self.widget, hildon.PORTRAIT_MODE_SUPPORT)
+
+    def _construct_menu_maemo(self):
+        menu = hildon.AppMenu()
+
+        # Filter buttons
+        self.portrait_button = gtk.ToggleButton(label=_("Portrait"))
+        self.portrait_button.connect("toggled", self.on_toggle_portrait)
+
+        menu.append(self.portrait_button)
+
+        # Select buttons
+        self.menu = menu
+
     def _update_info(self):
         if self._destroyed:
             return
@@ -149,7 +173,11 @@ class ReaderWindow(object):
         self.widget.show_all()
         self._update_info_schedule.run_later_in_gui_thread(
             100, self._update_info)
-        
+
+        if self.menu:
+            self.widget.set_app_menu(self.menu)
+            self.menu.show_all()
+
 def run(app, filename):
     notify_cb = app.show_notify(app.window.widget, _("Loading..."))
 
