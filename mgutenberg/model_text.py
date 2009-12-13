@@ -57,8 +57,10 @@ class EbookText(gtk.TextBuffer):
                 f = plucker.PluckerFile(filename)
                 # XXX: not implemented
                 raise IOError("Plucker supprot not implemented yet.")
-            else:
+            elif filename.endswith('.txt'):
                 f = open(filename, 'rb')
+            else:
+                raise IOError("Don't know how to open this type of files")
 
             self._load_stream(filename, f)
             f.close()
@@ -212,6 +214,11 @@ def detect_encoding(text):
 def rewrap(text):
     if not text:
         return
+
+    # remove lines
+    text = re.sub(r'-{10,}', '', text)
+    text = re.sub(r'={10,}', '', text)
+
     text = text.replace(u'\r', u'')
     text = textwrap.dedent(text)
 
@@ -219,11 +226,11 @@ def rewrap(text):
     if len([x for x in sample.split('\n') if x.startswith(' ')]) > 20:
         # Paragraphs separated by indent
         text = re.sub(u'\n(?!\\s)', u' ', text)
-    elif max(map(len, sample.split("\n"))) < 100 and '\n\n' in sample:
+    elif max(map(len, sample.split("\n"))) < 100 and sample.count('\n\n') > 5:
         # Paragraphs separated by empty lines
         text = re.sub(u'\n(?!\n)', u' ', text)
     else:
-        # Paragraphs on a single line
+        # Paragraphs on a single line -- or couldn't determine formatting
         pass
 
     text = re.sub(u'\s{10,}', u'\n', text)
