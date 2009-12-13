@@ -362,7 +362,7 @@ class EbookListWidget(object):
         lang_cell = gtk.CellRendererText()
         lang_col = gtk.TreeViewColumn(_('Language'), lang_cell, text=2)
 
-        widths = [300, 400, 100]
+        widths = [300, 400, 80]
         for j, col in enumerate([author_col, title_col, lang_col]):
             col.set_sort_column_id(j)
             col.set_resizable(True)
@@ -390,7 +390,6 @@ class GutenbergSearchWidget(object):
             if isinstance(r, Exception):
                 self.app.error_message(_("Error in fetching search results"),
                                        r)
-        
         notify_cb = self.app.show_notify(self.widget, _("Searching..."))
         self.results.new_search(
             self.search_author.get_text(),
@@ -460,6 +459,9 @@ class GutenbergSearchWidget(object):
 
         if MAEMO:
             scroll = hildon.PannableArea()
+            scroll.set_properties(
+                mov_mode=hildon.MOVEMENT_MODE_BOTH
+                )
         else:
             scroll = gtk.ScrolledWindow()
             scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_ALWAYS)
@@ -595,7 +597,6 @@ class GutenbergDownloadWindow(object):
 
         infoentries = [
             (_("Etext:"), str(self.info.etext_id)),
-            (_("Title:"), self.info.title),
             (_("Author:"), self.info.author),
             (_("Language:"), self.info.language),
         ]
@@ -615,11 +616,8 @@ class GutenbergDownloadWindow(object):
         box.pack_start(tbl, expand=False, fill=True)
 
         # Download list
-        if MAEMO:
-            scroll = hildon.PannableArea()
-        else:
-            scroll = gtk.ScrolledWindow()
-            scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_ALWAYS)
+        scroll = gtk.ScrolledWindow()
+        scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         self.down_list = gtk.TreeView(self.info)
         scroll.add(self.down_list)
         box.pack_start(scroll, expand=True, fill=True)
@@ -635,9 +633,11 @@ class GutenbergDownloadWindow(object):
             url = urllib.unquote(url.split('/')[-1])
             cell.set_property('text', url)
         file_col.set_cell_data_func(file_cell, pretty_filename)
-        
+
         self.down_list.append_column(info_col)
         self.down_list.append_column(file_col)
+
+        self.down_list.set_size_request(300, 400)
 
         # Action buttons
         self.down_button = gtk.Button(stock=gtk.STOCK_SAVE)
