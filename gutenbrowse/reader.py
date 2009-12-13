@@ -58,6 +58,10 @@ class ReaderWindow(object):
         self.widget = StackableWindow()
         self.widget.set_title("%s - Gutenbrowse" % self.title)
 
+        if MAEMO:
+            hildon.hildon_gtk_window_set_portrait_flags(
+                self.widget, hildon.PORTRAIT_MODE_SUPPORT)
+
         box = gtk.VBox()
         self.widget.add(box)
 
@@ -111,7 +115,6 @@ class ReaderWindow(object):
 
         # Save position
         self.app.config['positions'][self.filename] = it.get_offset()
-        print self.filename, self.app.config['positions'][self.filename]
 
     def on_scrolled(self, adj):
         self._update_info_schedule.run_later_in_gui_thread(

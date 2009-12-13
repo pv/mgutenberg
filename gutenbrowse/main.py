@@ -121,22 +121,7 @@ class MainWindow(object):
           </popup>
         </ui>
         """]
-    else:
-        UI_XMLS = ["""
-        <ui>
-          <popup name="menu_bar">
-            <menuitem action="read" />
-            <menuitem action="remove" />
-            <separator name="quit_sep" />
-            <menuitem name="quit" action="quit" />
-          </popup>
-          <popup name="ebook_popup">
-            <menuitem action="read" />
-            <menuitem action="remove" />
-          </popup>
-        </ui>
-        """]
-    
+
     def __init__(self, app):
         self.app = app
 
@@ -148,6 +133,10 @@ class MainWindow(object):
 
     def show_all(self):
         self.widget.show_all()
+
+        if self.menu is not None:
+            self.widget.set_app_menu(self.menu)
+            self.menu.show_all()
 
     # ---
 
@@ -191,7 +180,26 @@ class MainWindow(object):
 
         self.gutenberg_search.search_button.grab_default()
 
+        if MAEMO:
+            # Tabs are changed from menu
+            self.notebook.set_show_tabs(False)
+
         # Menu &c
+        if MAEMO:
+            self._construct_menu_maemo()
+        else:
+            self._construct_menu(vbox)
+
+        # Ebook context menu
+
+        # XXX: implement
+
+        # Status bar (non-Maemo)
+        if not MAEMO:
+            self.statusbar = gtk.Statusbar()
+            vbox.pack_start(self.statusbar, expand=False, fill=True)
+
+    def _construct_menu(self, vbox):
         actiongroup = gtk.ActionGroup('actiongroup')
         actiongroup.add_actions([
             ('file', None, _("_File")),
@@ -209,22 +217,49 @@ class MainWindow(object):
             self.uim.add_ui_from_string(xml)
 
         menu_bar = self.uim.get_widget('/menu_bar')
+        self.widget.add_accel_group(self.uim.get_accel_group())
+        vbox.pack_start(menu_bar, fill=True, expand=False)
+        vbox.reorder_child(menu_bar, 0)
+        self.menu = None
 
-        if MAEMO:
-            self.widget.set_menu(menu_bar)
-        else:
-            self.widget.add_accel_group(self.uim.get_accel_group())
-            vbox.pack_start(menu_bar, fill=True, expand=False)
-            vbox.reorder_child(menu_bar, 0)
+    # -- Maemo-specific:
 
-        # Ebook context menu
+    def on_book_button_click(self, widget):
+        self.notebook.set_current_page(0)
 
-        # XXX: implement
+    def on_gutenberg_button_click(self, widget):
+        self.notebook.set_current_page(1)
 
-        # Status bar (non-Maemo)
-        if not MAEMO:
-            self.statusbar = gtk.Statusbar()
-            vbox.pack_start(self.statusbar, expand=False, fill=True)
+    def on_notebook_switch_page(self, notebook, page, page_num):
+        self.book_button.handler_block_by_func(self.on_book_button_click)
+        self.gutenberg_button.handler_block_by_func(
+            self.on_gutenberg_button_click)
+
+        self.book_button.set_active(page_num == 0)
+        self.gutenberg_button.set_active(page_num == 1)
+
+        self.book_button.handler_unblock_by_func(self.on_book_button_click)
+        self.gutenberg_button.handler_unblock_by_func(
+            self.on_gutenberg_button_click)
+
+    def _construct_menu_maemo(self):
+        menu = hildon.AppMenu()
+
+        # Filter buttons
+        self.gutenberg_button = gtk.ToggleButton(label=_("Project Gutenberg"))
+        self.book_button = gtk.ToggleButton(label=_("Local books"))
+
+        self.gutenberg_button.connect("clicked", self.on_gutenberg_button_click)
+        self.book_button.connect("clicked", self.on_book_button_click)
+
+        self.notebook.connect("switch_page",
+                              self.on_notebook_switch_page)
+
+        menu.add_filter(self.gutenberg_button)
+        menu.add_filter(self.book_button)
+
+        # Select buttons
+        self.menu = menu
 
 class EbookListWidget(object):
     def __init__(self, app):
@@ -295,10 +330,10 @@ class EbookListWidget(object):
 
         # Filter entry
         hbox = gtk.HBox()
-        hbox.pack_start(gtk.Label(_("Filter:")), fill=False, expand=False)
+        hbox.pack_start(gtk.Label(_("Search:")), fill=False, expand=False)
         self.filter_entry = gtk.Entry()
         hbox.pack_start(self.filter_entry, fill=True, expand=True)
-        box.pack_start(hbox, fill=True, expand=False)
+        box.pack_end(hbox, fill=True, expand=False)
 
         # Tree
         if MAEMO:
