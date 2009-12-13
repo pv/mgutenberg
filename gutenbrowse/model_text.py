@@ -105,6 +105,12 @@ class EbookText(gtk.TextBuffer):
                     self.tags = []
                     self._append(u'\n')
                     self.slurp_space = True
+                elif tag == 'tr':
+                    self.tags = []
+                    self._append(u'\n')
+                    self.slurp_space = True
+                elif tag == 'td':
+                    self._append(u'\t')
                 elif tag == 'i' or tag == 'em':
                     self.tags.append(tag_emph)
                 elif tag == 'b' or tag == 'strong' or tag == 'bold':
@@ -119,8 +125,8 @@ class EbookText(gtk.TextBuffer):
                     self.handle_meta(attrs)
                 elif tag == 'img':
                     attrs = dict(attrs)
-                    if 'alt' in attrs:
-                        self.handle_data('[IMAGE: %s]' % attrs['alt'])
+                    if 'alt' in attrs and attrs['alt'].strip():
+                        self.handle_data('[IMAGE: %s]' % attrs['alt'].strip())
                     else:
                         self.handle_data('[IMAGE]')
 
