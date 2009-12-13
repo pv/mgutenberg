@@ -22,6 +22,7 @@ class ReaderWindow(object):
 
         self._last_size = None
         self._button_press = None
+        self._destroyed = False
 
         # Get saved position, before creating the window
         pos = self.app.config['positions'].get(filename, 0)
@@ -46,6 +47,7 @@ class ReaderWindow(object):
         self.textview.scroll_to_mark(self.mark, 0, use_align=True, yalign=0)
 
     def on_destroy(self, ev):
+        self._destroyed = True
         try:
             self.app.readers.remove(self)
         except ValueError:
@@ -88,8 +90,10 @@ class ReaderWindow(object):
         hbox.pack_end(self.info, fill=True, expand=False)
 
     def _update_info(self):
-        size = self.textview.size_request()
+        if self._destroyed:
+            return
 
+        size = self.textview.size_request()
         if size != self._last_size:
             # Wait until size converges -- e.g. when textview is still loading
             self._last_size = size
@@ -107,6 +111,7 @@ class ReaderWindow(object):
 
         # Save position
         self.app.config['positions'][self.filename] = it.get_offset()
+        print self.filename, self.app.config['positions'][self.filename]
 
     def on_scrolled(self, adj):
         self._update_info_schedule.run_later_in_gui_thread(
@@ -143,18 +148,23 @@ class ReaderWindow(object):
             100, self._update_info)
         
 def run(app, filename):
-    textbuffer = EbookText(filename)
-    title = os.path.splitext(os.path.basename(filename))[0]
-    if textbuffer.error:
-        msg = _("<b>Loading failed:</b>")
-        dlg = gtk.MessageDialog(type=gtk.MESSAGE_ERROR,
-                                buttons=gtk.BUTTONS_OK)
-        dlg.set_markup(msg)
-        dlg.format_secondary_text(title + "\n" + textbuffer.error)
-        dlg.connect("response", lambda obj, ev: dlg.destroy())
-        dlg.run()
-        return None
-    else:
-        reader = ReaderWindow(app, textbuffer, filename)
-        reader.show_all()
-        return reader
+    notify_cb = app.show_notify(app.window.widget, _("Loading..."))
+
+    def load_buffer_cb(textbuffer):
+        notify_cb()
+        title = os.path.splitext(os.path.basename(filename))[0]
+        if textbuffer.error:
+            msg = _("<b>Loading failed:</b>")
+            dlg = gtk.MessageDialog(type=gtk.MESSAGE_ERROR,
+                                    buttons=gtk.BUTTONS_OK)
+            dlg.set_markup(msg)
+            dlg.format_secondary_text(title + "\n" + textbuffer.error)
+            dlg.connect("response", lambda obj, ev: dlg.destroy())
+            dlg.run()
+            return None
+        else:
+            reader = ReaderWindow(app, textbuffer, filename)
+            reader.show_all()
+            return reader
+
+    run_in_background(EbookText, filename, callback=load_buffer_cb)
