@@ -11,6 +11,7 @@ import reader
 CONFIG_SCHEMA = {
     'search_dirs': (list, str),
     'save_dir': str,
+    'positions': (dict, int)
 }
 
 def main():
@@ -30,6 +31,7 @@ def main():
         sdirs = [os.path.join(os.path.expanduser("~"), "Desktop", "Books")]
     config.setdefault('search_dirs', sdirs)
     config.setdefault('save_dir', sdirs[0])
+    config.setdefault('positions', {})
 
     # Run
     app = GutenbrowseApp(config)

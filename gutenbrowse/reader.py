@@ -8,18 +8,31 @@ from ui import *
 from model_text import EbookText
 
 class ReaderWindow(object):
-    def __init__(self, app, textbuffer, title):
+    def __init__(self, app, textbuffer, filename):
         self.app = app
         self.textbuffer = textbuffer
-        self.title = title
+
+        self.filename = filename
+        self.title = os.path.splitext(os.path.basename(filename))[0]
 
         self._update_info_schedule = SingleRunner(max_delay=1000)
         self._page_height = None
 
+        self._last_size = None
+
+        # Get saved position, before creating the window
+        pos = self.app.config['positions'].get(filename, 0)
+
+        # Create window and connect signals
         self._construct()
         self.widget.connect("destroy", self.on_destroy)
         self.textscroll.get_vadjustment().connect("value-changed",
                                                   self.on_scrolled)
+
+        # Scroll to saved position
+        it = textbuffer.get_iter_at_offset(pos)
+        self.mark = textbuffer.create_mark("pos", it)
+        self.textview.scroll_to_mark(self.mark, 0, use_align=True, yalign=0)
 
     def on_destroy(self, ev):
         try:
@@ -61,14 +74,26 @@ class ReaderWindow(object):
         box.pack_end(self.info, fill=True, expand=False)
 
     def _update_info(self):
-        rect = self.textview.get_visible_rect()
         size = self.textview.size_request()
 
-        perc = round(rect.y * 100.0 / max(rect.y, size[1] - rect.height))
+        if size != self._last_size:
+            # Wait until size converges -- e.g. when textview is still loading
+            self._last_size = size
+            self._update_info_schedule.run_later_in_gui_thread(
+                1000, self._update_info)
+            return
+
+        rect = self.textview.get_visible_rect()
+
+        perc = round(rect.y * 100.0 / max(1.0,max(rect.y, size[1]-rect.height)))
         cpage = round(1 + rect.y / rect.height)
         npages = round(1 + size[1] / rect.height)
 
         self.info.set_text('%d / %d, %d %%' % (cpage, npages, perc))
+
+        # Save position
+        it = self.textview.get_iter_at_location(rect.x, rect.y)
+        self.app.config['positions'][self.filename] = it.get_offset()
 
     def on_scrolled(self, adj):
         self._update_info_schedule.run_later_in_gui_thread(
@@ -76,11 +101,12 @@ class ReaderWindow(object):
 
     def show_all(self):
         self.widget.show_all()
-        self._update_info()
-
+        self._update_info_schedule.run_later_in_gui_thread(
+            100, self._update_info)
+        
 def run(app, filename):
-    title = os.path.splitext(os.path.basename(filename))[0]
     textbuffer = EbookText(filename)
+    title = os.path.splitext(os.path.basename(filename))[0]
     if textbuffer.error:
         msg = _("<b>Loading failed:</b>")
         dlg = gtk.MessageDialog(type=gtk.MESSAGE_ERROR,
@@ -91,6 +117,6 @@ def run(app, filename):
         dlg.run()
         return None
     else:
-        reader = ReaderWindow(app, textbuffer, title)
+        reader = ReaderWindow(app, textbuffer, filename)
         reader.show_all()
         return reader
