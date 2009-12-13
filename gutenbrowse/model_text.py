@@ -13,6 +13,8 @@ import textwrap
 import re
 
 from HTMLParser import HTMLParser
+import htmlentitydefs
+
 import plucker
 
 class EbookText(gtk.TextBuffer):
@@ -90,8 +92,9 @@ class EbookText(gtk.TextBuffer):
             tags = []
             in_body = False
             encoding = 'latin1'
-            para = ""
+            para = u""
             omit = 0
+            slurp_space = True
 
             def handle_starttag(self, tag, attrs):
                 self.flush()
@@ -101,6 +104,7 @@ class EbookText(gtk.TextBuffer):
                 elif tag == 'p' or tag == 'br' or tag == 'div':
                     self.tags = []
                     self._append(u'\n')
+                    self.slurp_space = True
                 elif tag == 'i' or tag == 'em':
                     self.tags.append(tag_emph)
                 elif tag == 'b' or tag == 'strong' or tag == 'bold':
@@ -111,6 +115,29 @@ class EbookText(gtk.TextBuffer):
                     self.in_body = True
                 elif tag == 'style':
                     self.omit += 1
+                elif tag == 'meta' and not self.in_body:
+                    self.handle_meta(attrs)
+                elif tag == 'img':
+                    attrs = dict(attrs)
+                    if 'alt' in attrs:
+                        self.handle_data('[IMAGE: %s]' % attrs['alt'])
+                    else:
+                        self.handle_data('[IMAGE]')
+
+            def handle_meta(self, attrs):
+                attrs = dict(attrs)
+                if not attrs.get('http-equiv', "").lower() == 'content-type':
+                    return
+                content = attrs.get('content', "")
+
+                m = re.search(r'charset\s*=\s*([a-zA-Z0-9-]+)', content)
+                if m:
+                    encoding = m.group(1).lower()
+                    try:
+                        unicode('', encoding)
+                        self.encoding = encoding
+                    except UnicodeError:
+                        pass
 
             def handle_endtag(self, tag):
                 self.flush()
@@ -129,9 +156,19 @@ class EbookText(gtk.TextBuffer):
                     return
                 data = data.replace('\r', '')
                 data = data.replace('\n', ' ')
-                if not self.para:
+                if self.slurp_space:
                     data = data.lstrip()
                 self.para += data
+                self.slurp_space = False
+
+            def handle_charref(self, name):
+                try:
+                    self.para += unicode(chr(int(name)), 'latin1')
+                except (UnicodeError, ValueError):
+                    self.para += '?'
+
+            def handle_entityref(self, name):
+                self.para += u'%c' % htmlentitydefs.name2codepoint.get(name, 63)
 
             def _append(self, text):
                 parent.insert_with_tags(parent.get_end_iter(),
@@ -140,7 +177,7 @@ class EbookText(gtk.TextBuffer):
             def flush(self):
                 if self.para:
                     self._append(self.para)
-                    self.para = ""
+                    self.para = u""
 
         html = HandleHTML()
         html.feed(raw_text)

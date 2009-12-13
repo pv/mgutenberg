@@ -155,13 +155,20 @@ def run(app, filename):
 
     def load_buffer_cb(textbuffer):
         notify_cb()
+        error = None
+
+        if isinstance(textbuffer, Exception):
+            error = str(textbuffer)
+        elif textbuffer.error:
+            error = textbuffer.error
+
         title = os.path.splitext(os.path.basename(filename))[0]
-        if textbuffer.error:
+        if error:
             msg = _("<b>Loading failed:</b>")
             dlg = gtk.MessageDialog(type=gtk.MESSAGE_ERROR,
                                     buttons=gtk.BUTTONS_OK)
             dlg.set_markup(msg)
-            dlg.format_secondary_text(title + "\n" + textbuffer.error)
+            dlg.format_secondary_text(title + "\n" + error)
             dlg.connect("response", lambda obj, ev: dlg.destroy())
             dlg.run()
             return None
