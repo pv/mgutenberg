@@ -2,7 +2,9 @@
 GUI threading helpers
 """
 import threading
+import time
 import Queue
+
 try:
     import glib
 except ImportError:
@@ -66,18 +68,34 @@ class SingleRunner(object):
 
     """
 
-    def __init__(self):
+    def __init__(self, max_delay=None):
         self.scheduled_id = 0
+        self.first_event = None
+        self.max_delay = max_delay
+        if max_delay is not None:
+            self.max_delay /= 1000.
 
     def _run_func(self, run_id, func, *a, **kw):
-        if run_id >= self.scheduled_id:
+        ok = (run_id >= self.scheduled_id)
+        if self.max_delay is not None and self.first_event is not None:
+            ok = ok | (time.time() > self.first_event + self.max_delay)
+        if ok:
+            if self.max_delay is not None:
+                if run_id < self.scheduled_id:
+                    self.first_event = time.time()
+                else:
+                    self.first_event = None
             return func(*a, **kw)
 
     def run_in_gui_thread(self, func, *a, **kw):
         self.scheduled_id += 1
+        if self.max_delay is not None and self.first_event is None:
+            self.first_event = time.time()
         run_in_gui_thread(self._run_func, self.scheduled_id, func, *a, **kw)
 
     def run_later_in_gui_thread(self, delay, func, *a, **kw):
         self.scheduled_id += 1
+        if self.max_delay is not None and self.first_event is None:
+            self.first_event = time.time()
         run_later_in_gui_thread(delay, self._run_func, self.scheduled_id,
                                 func, *a, **kw)

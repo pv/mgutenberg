@@ -29,6 +29,8 @@ class EbookText(gtk.TextBuffer):
 
     @property
     def error(self):
+        if not self._error:
+            return None
         return str(self._error)
 
     def _load(self, filename):
