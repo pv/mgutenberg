@@ -3,6 +3,7 @@ Ebook text
 
 """
 from ui import gtk
+import pango
 
 import os
 import gzip
@@ -11,15 +12,17 @@ import zipfile
 import textwrap
 import re
 
+from HTMLParser import HTMLParser
 import plucker
 
 class EbookText(gtk.TextBuffer):
     def __init__(self, filename):
+        gtk.TextBuffer.__init__(self)
+
         self._text = None
         self._error = None
         self._load(filename)
 
-        gtk.TextBuffer.__init__(self)
         if self._text:
             self.set_text(self._text)
 
@@ -37,31 +40,123 @@ class EbookText(gtk.TextBuffer):
         try:
             if filename.endswith('.gz'):
                 f = gzip.open(filename, 'rb')
+                filename = filename[:-4]
             elif filename.endswith('.bz2'):
                 f = bz2.BZ2File(filename, 'rb')
+                filename = filename[:-4]
             elif filename.endswith('.zip'):
                 zf = zipfile.ZipFile(filename, 'rb')
                 names = zf.namelist()
                 if len(names) != 1:
                     raise IOError("Zip file does not contain a single file")
                 f = zf.open(names[0], 'rb')
+                filename = names[0]
             elif filename.endswith('.pdb'):
                 f = plucker.PluckerFile(filename)
+                # XXX: not implemented
+                raise IOError("Plucker supprot not implemented yet.")
             else:
                 f = open(filename, 'rb')
-            raw_text = f.read()
+
+            self._load_stream(filename, f)
             f.close()
-
-            for encoding in detect_encoding(raw_text):
-                try:
-                    self._text = unicode(raw_text, encoding)
-                except UnicodeError:
-                    pass
-
-            self._text = rewrap(self._text)
         except IOError, e:
             self._text = None
             self._error = e
+
+    def _load_stream(self, filename, f):
+        if filename.endswith('.html') or filename.endswith('.htm'):
+            self._load_html(f)
+        else:
+            self._load_plain_text(f)
+
+    def _load_html(self, f):
+        raw_text = f.read()
+        f.close()
+        for encoding in detect_encoding(raw_text):
+            try:
+                raw_text = unicode(raw_text, encoding)
+                break
+            except UnicodeError:
+                pass
+
+        tag_bold = self.create_tag("bold", weight=pango.WEIGHT_BOLD)
+        tag_emph = self.create_tag("emph", style=pango.STYLE_ITALIC)
+        tag_big = self.create_tag("big", scale=1.5)
+
+        parent = self
+
+        class HandleHTML(HTMLParser):
+            tags = []
+            in_body = False
+            encoding = 'latin1'
+            para = ""
+            omit = 0
+
+            def handle_starttag(self, tag, attrs):
+                self.flush()
+                if tag in ('h1', 'h2', 'h3', 'h4'):
+                    self._append(u'\n\n')
+                    self.tags.append(tag_big)
+                elif tag == 'p' or tag == 'br' or tag == 'div':
+                    self.tags = []
+                    self._append(u'\n')
+                elif tag == 'i' or tag == 'em':
+                    self.tags.append(tag_emph)
+                elif tag == 'b' or tag == 'strong' or tag == 'bold':
+                    self.tags.append(tag_bold)
+                elif tag == 'hr':
+                    self._append(u'\n')
+                elif tag == 'body':
+                    self.in_body = True
+                elif tag == 'style':
+                    self.omit += 1
+
+            def handle_endtag(self, tag):
+                self.flush()
+                if tag == 'style':
+                    self.omit -= 1
+                elif tag in ('h1', 'h2', 'h3', 'h4'):
+                    if self.tags:
+                        self.tags.pop()
+                    self._append('\n')
+                elif tag in ('i', 'em', 'b', 'strong', 'bold'):
+                    if self.tags:
+                        self.tags.pop()
+
+            def handle_data(self, data):
+                if self.omit:
+                    return
+                data = data.replace('\r', '')
+                data = data.replace('\n', ' ')
+                if not self.para:
+                    data = data.lstrip()
+                self.para += data
+
+            def _append(self, text):
+                parent.insert_with_tags(parent.get_end_iter(),
+                                        text.encode('utf-8'), *self.tags)
+
+            def flush(self):
+                if self.para:
+                    self._append(self.para)
+                    self.para = ""
+
+        html = HandleHTML()
+        html.feed(raw_text)
+        html.flush()
+
+    def _load_plain_text(self, f):
+        raw_text = f.read()
+
+        for encoding in detect_encoding(raw_text):
+            try:
+                self._text = unicode(raw_text, encoding)
+                break
+            except UnicodeError:
+                pass
+
+        self._text = rewrap(self._text)
 
 def detect_encoding(text):
     encodings = ['utf-8']
@@ -91,7 +186,3 @@ def rewrap(text):
     text = re.sub(u'\s{10,}', u'\n', text)
     text = re.sub(u'\n[ \t]+', u'\n', text)
     return text
-
-if __name__ == "__main__":
-    text = EbookText("test2.txt.bz2")
-    print text._text
