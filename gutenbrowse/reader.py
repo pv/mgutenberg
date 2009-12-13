@@ -3,6 +3,8 @@ Simple book reader
 
 """
 import os
+import time
+import math
 
 from ui import *
 from model_text import EbookText
@@ -19,6 +21,7 @@ class ReaderWindow(object):
         self._page_height = None
 
         self._last_size = None
+        self._button_press = None
 
         # Get saved position, before creating the window
         pos = self.app.config['positions'].get(filename, 0)
@@ -28,6 +31,17 @@ class ReaderWindow(object):
         self.widget.connect("destroy", self.on_destroy)
         self.textscroll.get_vadjustment().connect("value-changed",
                                                   self.on_scrolled)
+        self._scale_update = \
+                           self.pos_scale.connect("change-value",
+                                                  self.on_scale_change_value)
+
+        # Click events
+        self.textscroll.add_events(gtk.gdk.BUTTON_RELEASE_MASK
+                                   | gtk.gdk.BUTTON_PRESS_MASK)
+        self.textscroll.connect("button-press-event",
+                                self.button_press_event)
+        self.textscroll.connect("button-release-event",
+                                self.button_release_event)
 
         # Scroll to saved position
         it = textbuffer.get_iter_at_offset(pos)
@@ -69,9 +83,19 @@ class ReaderWindow(object):
             )
         scroll.add(self.textview)
 
+        hbox = gtk.HBox()
+        box.pack_end(hbox, fill=True, expand=False)
+
+        self.pos_scale = gtk.HScale()
+        self.pos_scale.set_properties(
+            draw_value=False
+            )
+        self.pos_scale.set_range(0, self.textbuffer.get_end_iter().get_offset())
+        hbox.pack_start(self.pos_scale, fill=True, expand=True)
+
         self.info = gtk.Label()
         self.info.set_alignment(0.95, 0.5)
-        box.pack_end(self.info, fill=True, expand=False)
+        hbox.pack_end(self.info, fill=True, expand=False)
 
     def _update_info(self):
         size = self.textview.size_request()
@@ -85,19 +109,55 @@ class ReaderWindow(object):
 
         rect = self.textview.get_visible_rect()
 
-        perc = round(rect.y * 100.0 / max(1.0,max(rect.y, size[1]-rect.height)))
         cpage = round(1 + rect.y / rect.height)
         npages = round(1 + size[1] / rect.height)
+        self.info.set_text('%d / %d' % (cpage, npages))
 
-        self.info.set_text('%d / %d, %d %%' % (cpage, npages, perc))
+        it = self.textview.get_iter_at_location(rect.x, rect.y)
+
+        # Update slider
+        self.pos_scale.handler_block(self._scale_update)
+        self.pos_scale.set_value(it.get_offset())
+        self.pos_scale.handler_unblock(self._scale_update)
 
         # Save position
-        it = self.textview.get_iter_at_location(rect.x, rect.y)
         self.app.config['positions'][self.filename] = it.get_offset()
+
+    def on_scale_change_value(self, range, scroll, value):
+        self.textview.scroll_to_iter(
+            self.textbuffer.get_iter_at_offset(int(value)), 0, use_align=True)
+
+        self._update_info_schedule.run_later_in_gui_thread(
+            100, self._update_info)
 
     def on_scrolled(self, adj):
         self._update_info_schedule.run_later_in_gui_thread(
             100, self._update_info)
+
+    def button_press_event(self, widget, event):
+        self._button_press = (event.x, event.y, time.time())
+
+    def button_release_event(self, widget, event):
+        press = self._button_press
+        self._button_press = None
+
+        # Require a tap, not panning etc.
+        if not press:
+            return False
+        if math.hypot(press[0]-event.x, press[1]-event.y) > 50:
+            return False
+        if time.time() - press[2] > 0.5:
+            return False
+
+        # Check direction, and pan
+        w, h = self.widget.size_request()
+        if event.y > 2*h/3:
+            self.textview.emit("move-viewport", gtk.SCROLL_PAGES, 1)
+        elif event.y < h/3:
+            self.textview.emit("move-viewport", gtk.SCROLL_PAGES, -1)
+        else:
+            return False
+        return True
 
     def show_all(self):
         self.widget.show_all()
