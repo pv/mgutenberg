@@ -1,3 +1,8 @@
+"""
+Utility tools
+
+"""
+
 import urllib as _urllib
 
 class HTTPError(IOError):

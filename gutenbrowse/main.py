@@ -11,6 +11,7 @@ try:
     MAEMO = True
     AppBase = hildon.Program
     Window = hildon.Window
+    MAEMO_SAVE_DIR = '/home/user/MyDocs/.documents/Books'
 except ImportError:
     MAEMO = False
     AppBase = object
@@ -32,11 +33,11 @@ def main():
         config.load()
     except IOError:
         pass
+
     if MAEMO:
-        sdirs = ['/media/mmc1', '/media/mmc2', '/home/user/MyDocs/.documents']
+        sdirs = [MAEMO_SAVE_DIR]
         config.setdefault('search_dirs', sdirs)
-        # XXX: Don't hardcode the save dir like this!
-        config.setdefault('save_dir', '/media/mmc1/Books')
+        config.setdefault('save_dir', MAEMO_SAVE_DIR)
     else:
         sdirs = [os.path.join(os.path.expanduser("~"), "Desktop", "Books")]
         config.setdefault('search_dirs', sdirs)
@@ -107,23 +108,15 @@ class GutenbrowseApp(AppBase):
         gtk.main_quit()
 
 class MainWindow(object):
-
-
     if not MAEMO:
         UI_XMLS = ["""
         <ui>
           <menubar name="menu_bar">
             <menu name="file" action="file">
-              <menuitem action="fetch_url" />
-              <menuitem action="fetch_file" />
-              <separator/>
               <menuitem action="read" />
               <menuitem action="remove" />
               <separator name="quit_sep" />
               <menuitem name="quit" action="quit" />
-            </menu>
-            <menu action="tools">
-              <menuitem action="update_fbreader" />
             </menu>
           </menubar>
           <popup name="ebook_popup">
@@ -136,13 +129,8 @@ class MainWindow(object):
         UI_XMLS = ["""
         <ui>
           <popup name="menu_bar">
-            <menuitem action="fetch_url" />
-            <menuitem action="fetch_file" />
-            <separator/>
             <menuitem action="read" />
             <menuitem action="remove" />
-            <separator name="quit_sep" />
-            <menuitem action="update_fbreader" />
             <separator name="quit_sep" />
             <menuitem name="quit" action="quit" />
           </popup>
@@ -167,30 +155,11 @@ class MainWindow(object):
 
     # ---
 
-    def on_action_fetch_url(self, action):
-        pass # XXX: implement
-    
-    def on_action_fetch_file(self, action):
-        pass # XXX: implement
-    
     def on_action_read(self, action):
         pass # XXX: implement
     
     def on_action_remove(self, action):
         pass # XXX: implement
-    
-    def on_action_update(self, action):
-        pass # XXX: implement
-
-    def on_action_update_fbreader(self, action):
-        def on_finish(r):
-            notify_cb()
-            if isinstance(r, Exception):
-                self.app.error_message(_("Error updating FBReader"), r)
-
-        notify_cb = self.app.show_notify(self.widget,
-                                         _("Synchronizing FBReader..."))
-        self.app.ebook_list.sync_fbreader(callback=on_finish)
 
     def on_action_quit(self, action):
         self.app.quit()
@@ -230,19 +199,12 @@ class MainWindow(object):
         actiongroup = gtk.ActionGroup('actiongroup')
         actiongroup.add_actions([
             ('file', None, _("_File")),
-            ('fetch_url', None, _("_Fetch URL..."), None,
-             None, self.on_action_fetch_url),
-            ('fetch_file', None, _("_Fetch file..."), None,
-             None, self.on_action_fetch_file),
             ('read', None, _("_Read"), None,
              None, self.on_action_read),
             ('remove', None, _("_Remove..."), None,
              None, self.on_action_remove),
             ('quit', gtk.STOCK_QUIT, _("_Quit"), None,
-             None, self.on_action_quit),
-            ('tools', None, _("_Tools")),
-            ('update_fbreader', None, _("_Update FBReader book list"), None,
-             None, self.on_action_update_fbreader),
+             None, self.on_action_quit)
         ])
         
         self.uim = gtk.UIManager()

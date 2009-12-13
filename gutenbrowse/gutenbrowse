@@ -1,3 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.5
+import sys, os
+PD = os.path.join(os.path.dirname(__file__), '..')
+if os.path.isfile(os.path.join(PD, 'gutenbrowse', '__init__.py')):
+    sys.path.insert(0, PD)
 from gutenbrowse.main import main
 main()
