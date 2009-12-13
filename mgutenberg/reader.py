@@ -23,6 +23,7 @@ class ReaderWindow(object):
         self._last_size = None
         self._button_press = None
         self._destroyed = False
+        self._fullscreen = False
 
         # Get saved position, before creating the window
         pos = self.app.config['positions'].get(filename, 0)
@@ -79,8 +80,8 @@ class ReaderWindow(object):
             cursor_visible=False,
             editable=False,
             justification=gtk.JUSTIFY_FILL,
-            left_margin=20,
-            right_margin=20,
+            left_margin=10,
+            right_margin=10,
             indent=40,
             wrap_mode=gtk.WRAP_WORD
             )
@@ -161,13 +162,39 @@ class ReaderWindow(object):
 
         # Check direction, and pan
         w, h = self.widget.size_request()
-        if event.y > 2*h/3:
-            self.textview.emit("move-viewport", gtk.SCROLL_PAGES, 1)
-        elif event.y < h/3:
-            self.textview.emit("move-viewport", gtk.SCROLL_PAGES, -1)
+        if event.y > 2*h/3 and min(event.x, abs(w - event.x)) > 70:
+            self._page_down()
+        elif event.y < h/3 and min(event.x, abs(w - event.x)) > 70:
+            self._page_up()
         else:
-            return False
+            if self._fullscreen:
+                self.widget.unfullscreen()
+                self.info.show()
+                self._fullscreen = False
+            else:
+                self.widget.fullscreen()
+                self.info.hide()
+                self._fullscreen = True
         return True
+
+    def _page_down(self):
+        """
+        Scroll page down, so that *no lines already visible* are shown again.
+        """
+        rect = self.textview.get_visible_rect()
+        it = self.textview.get_iter_at_location(rect.x, rect.y + rect.height)
+        self.textview.scroll_to_iter(it, 0, use_align=True, yalign=0)
+
+    def _page_up(self):
+        """
+        Scroll page up, so that *no lines already visible* are shown again.
+
+        Also, _page_up(); _page_down(); must lead to the same topmost
+        full line shown.
+        """
+        rect = self.textview.get_visible_rect()
+        it = self.textview.get_iter_at_location(rect.x, rect.y - 1)
+        self.textview.scroll_to_iter(it, 0, use_align=True, yalign=1)
 
     def show_all(self):
         self.widget.show_all()
