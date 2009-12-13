@@ -17,9 +17,10 @@ if 'dev' in version:
                     "-r", cur_id.replace('+', '')])
             if '+' in cur_id:
                 v  = v.replace('.', 'x.')
+            v = "." + v
         except OSError:
-            v += "0.XXXXXXXXXXXX"
-        version += "." + v
+            v = ""
+        version += v
 
 setup(
     name = 'mgutenberg',
