@@ -2,7 +2,7 @@
 from setuptools import setup, find_packages
 import subprocess, os
 
-mod = __import__('gutenbrowse/__init__')
+mod = __import__('mgutenberg/__init__')
 version = mod.__version__
 
 if 'dev' in version:
@@ -22,13 +22,13 @@ if 'dev' in version:
         version += "." + v
 
 setup(
-    name = 'gutenbrowse',
+    name = 'mgutenberg',
     version = version,
     author = "Pauli Virtanen",
     author_email = "pav@iki.fi",
     license = "BSD, 3-clause",
     ##
     packages = find_packages(),
-    scripts = ["gutenbrowse/gutenbrowse"],
+    scripts = ["mgutenberg/mgutenberg"],
     test_suite = 'nose.collector',
 )

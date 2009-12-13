@@ -1,5 +1,5 @@
 <backup-configuration>
   <locations>
-    <location type="file" category="settings">$HOME/.gutenbrowse</location>
+    <location type="file" category="settings">$HOME/.mgutenberg</location>
   </locations>
 </backup-configuration>

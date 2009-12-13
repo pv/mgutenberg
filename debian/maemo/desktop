@@ -1,11 +1,11 @@
 [Desktop Entry]
 Encoding=UTF-8
 Type=Application
-Name=Gutenbrowse
+Name=MGutenberg
 Comment=E-book organizer
-Exec=gutenbrowse
-Icon=gutenbrowse
+Exec=mgutenberg
+Icon=mgutenberg
 StartupNotify=true
 X-HildonDesk-ShowInToolbar=true
-X-Window-Icon=gutenbrowse
-X-Window-Icon-Dimmed=gutenbrowse
+X-Window-Icon=mgutenberg
+X-Window-Icon-Dimmed=mgutenberg

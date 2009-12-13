@@ -401,7 +401,7 @@ class Config(dict):
     """
     def __init__(self, schema):
         home = os.path.expanduser("~")
-        self.file_name = os.path.join(home, '.gutenbrowserc')
+        self.file_name = os.path.join(home, '.mgutenbergrc')
         self.schema = schema
 
     def _toxml(self, o):

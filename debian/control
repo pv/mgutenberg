@@ -1,13 +1,13 @@
-Source: gutenbrowse
+Source: mgutenberg
 Section: user/tools
 Priority: optional
 Maintainer: Pauli Virtanen <pav@iki.fi>
 Build-Depends: debhelper (>> 3.0.0), python2.5
 Standards-Version: 3.6.2
 
-Package: gutenbrowse
+Package: mgutenberg
 Architecture: all
-Depends: python2.5-xml, python2.5, python2.5-hildon, fbreader | fbreader-maemo2
+Depends: python2.5, python-hildon
 XB-Maemo-Icon-26:
   iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAYAAACpSkzOAAAABHNCSVQICAgIfAhkiAAAAAlwSFlz
   AAAFEwAABRMBWjvKTwAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAXBSURB

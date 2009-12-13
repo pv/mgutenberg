@@ -1,16 +1,22 @@
-gutenbrowse (0.1.1-2) hardy; urgency=low
+mgutenberg (0.2-0.1) fremantle; urgency=low
+
+  * New upload
+
+ -- Pauli Virtanen <pav@iki.fi>  Sun, 13 Dec 2009 23:57:00 +0200
+
+mgutenberg (0.1.1-2) hardy; urgency=low
 
   * New upload.
 
  -- Pauli Virtanen <pauli.virtanen@iki.fi>  Sat, 19 Apr 2008 15:28:01 +0300
 
-gutenbrowse (0.1.1-0.1) gutsy; urgency=low
+mgutenberg (0.1.1-0.1) gutsy; urgency=low
 
   * New version.
 
  -- Pauli Virtanen <pauli.virtanen@iki.fi>  Mon, 17 Sep 2007 00:36:10 +0300
 
-gutenbrowse (0.1-0.1) gutsy; urgency=low
+mgutenberg (0.1-0.1) gutsy; urgency=low
 
   * First release.
 

@@ -1,4 +1,4 @@
-import gutenbrowse.gutenbergweb as gutenbergweb
+import mgutenberg.gutenbergweb as gutenbergweb
 
 def test_search_author():
     r = gutenbergweb.search(author='Nietzsche')

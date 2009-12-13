@@ -34,13 +34,13 @@ def main():
     config.setdefault('positions', {})
 
     # Run
-    app = GutenbrowseApp(config)
+    app = MGutenbergApp(config)
     app.run()
 
 
 # XXX: revise those deeply nested callbacks; try to reduce nesting of code
 
-class GutenbrowseApp(AppBase):
+class MGutenbergApp(AppBase):
     def __init__(self, config):
         AppBase.__init__(self)
         
@@ -157,7 +157,7 @@ class MainWindow(object):
     def _construct(self):
         # Window
         self.widget = StackableWindow()
-        self.widget.set_title("Gutenbrowse")
+        self.widget.set_title("MGutenberg")
 
         vbox = gtk.VBox()
         self.widget.add(vbox)

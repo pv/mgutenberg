@@ -1,12 +1,12 @@
 [install]
-package = gutenbrowse
-catalogues = gutenbrowse; extras; fbreader
+package = mgutenberg
+catalogues = mgutenberg; extras; fbreader
 
 [catalogues]
-catalogues = gutenbrowse; extras; fbreader
+catalogues = mgutenberg; extras; fbreader
 
-[gutenbrowse]
-name = Gutenbrowse etc. catalogue
+[mgutenberg]
+name = MGutenberg etc. catalogue
 uri = http://www.elisanet.fi/ptvirtan/repo/
 components = main
 

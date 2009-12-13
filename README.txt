@@ -1,5 +1,5 @@
 ===========
-Gutenbrowse
+MGutenberg
 ===========
 
 :Author: Pauli Virtanen <pav@iki.fi>

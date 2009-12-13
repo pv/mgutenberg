@@ -8,7 +8,7 @@ export DH_COMPAT=4
 
 PYTHON2.5 = /usr/bin/python2.5
 
-PKG=gutenbrowse
+PKG=mgutenberg
 
 build:
 	dh_testdir
@@ -29,16 +29,16 @@ install: build
 	install -d debian/$(PKG)/usr/share/applications/hildon
 	install -m 644 \
 		debian/maemo/desktop \
-		debian/$(PKG)/usr/share/applications/hildon/gutenbrowse.desktop
+		debian/$(PKG)/usr/share/applications/hildon/mgutenberg.desktop
 
 	install -d debian/$(PKG)/etc/osso-backup/applications
 	install -m 644 \
 		debian/maemo/backup \
-		debian/$(PKG)/etc/osso-backup/applications/gutenbrowse.conf
+		debian/$(PKG)/etc/osso-backup/applications/mgutenberg.conf
 
 	install -d debian/$(PKG)/usr/share/pixmaps
 	install -m 644 \
-		gutenbrowse.png debian/$(PKG)/usr/share/pixmaps
+		mgutenberg.png debian/$(PKG)/usr/share/pixmaps
 
 # Build architecture-independent files here.
 binary-indep: build install

@@ -56,7 +56,7 @@ class ReaderWindow(object):
     @assert_gui_thread
     def _construct(self):
         self.widget = StackableWindow()
-        self.widget.set_title("%s - Gutenbrowse" % self.title)
+        self.widget.set_title("%s - MGutenberg" % self.title)
 
         if MAEMO:
             hildon.hildon_gtk_window_set_portrait_flags(
