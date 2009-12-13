@@ -1,22 +1,12 @@
 #!/usr/bin/env python
-import pygtk
-pygtk.require('2.0')
-import gtk, gobject, subprocess, os, optparse, urllib
+import subprocess
+import os
+import optparse
+import urllib
 
+from ui import *
 from model import *
-from gettext import gettext as _
-
-try:
-    import hildon
-    MAEMO = True
-    AppBase = hildon.Program
-    Window = hildon.Window
-    MAEMO_SAVE_DIR = '/home/user/MyDocs/.documents/Books'
-except ImportError:
-    MAEMO = False
-    AppBase = object
-    Window = gtk.Window
-
+import reader
 
 CONFIG_SCHEMA = {
     'search_dirs': (list, str),
@@ -35,13 +25,11 @@ def main():
         pass
 
     if MAEMO:
-        sdirs = [MAEMO_SAVE_DIR]
-        config.setdefault('search_dirs', sdirs)
-        config.setdefault('save_dir', MAEMO_SAVE_DIR)
+        sdirs = [os.path.expanduser("~/MyDocs/.documents/Books")]
     else:
         sdirs = [os.path.join(os.path.expanduser("~"), "Desktop", "Books")]
-        config.setdefault('search_dirs', sdirs)
-        config.setdefault('save_dir', sdirs[0])
+    config.setdefault('search_dirs', sdirs)
+    config.setdefault('save_dir', sdirs[0])
 
     # Run
     app = GutenbrowseApp(config)
@@ -57,7 +45,8 @@ class GutenbrowseApp(AppBase):
         self.config = config
         self.ebook_list = EbookList(config['search_dirs'])
         self.window = MainWindow(self)
-        
+        self.readers = []
+
         if MAEMO:
             self.add_window(self.window.widget)
         
@@ -96,6 +85,11 @@ class GutenbrowseApp(AppBase):
             def finish():
                 self.window.statusbar.pop(0)
             return finish
+
+    def start_reader(self, filename):
+        sub = reader.run(self, filename)
+        if sub:
+            self.readers.append(sub)
 
     def run(self):
         self.window.show_all()
@@ -171,7 +165,7 @@ class MainWindow(object):
 
     def _construct(self):
         # Window
-        self.widget = Window()
+        self.widget = StackableWindow()
         self.widget.set_title("Gutenbrowse")
 
         vbox = gtk.VBox()
@@ -257,7 +251,7 @@ class EbookListWidget(object):
     
     def on_activated(self, treeview, it, column):
         entry = treeview.get_model()[it]
-        run_fbreader(entry[3])
+        self.app.start_reader(entry[3])
 
     def on_map_event(self, widget, ev):
         run_later_in_gui_thread(500,
@@ -305,15 +299,22 @@ class EbookListWidget(object):
         box.pack_start(hbox, fill=True, expand=False)
 
         # Tree
-        scroll = gtk.ScrolledWindow()
+        if MAEMO:
+            scroll = hildon.PannableArea()
+        else:
+            scroll = gtk.ScrolledWindow()
+            scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_ALWAYS)
+
         box.pack_start(scroll, fill=True, expand=True)
 
         self.widget_tree = gtk.TreeView(self.store)
-        scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_ALWAYS)
         scroll.add(self.widget_tree)
 
         self.widget_tree.set_enable_search(True)
-        self.widget_tree.set_headers_visible(True)
+        if MAEMO:
+            self.widget_tree.set_headers_visible(False)
+        else:
+            self.widget_tree.set_headers_visible(True)
         
         author_cell = gtk.CellRendererText()
         author_col = gtk.TreeViewColumn(_('Author'), author_cell, text=0)
@@ -323,16 +324,17 @@ class EbookListWidget(object):
         
         lang_cell = gtk.CellRendererText()
         lang_col = gtk.TreeViewColumn(_('Language'), lang_cell, text=2)
-        
+
+        widths = [300, 400, 100]
         for j, col in enumerate([author_col, title_col, lang_col]):
             col.set_sort_column_id(j)
             col.set_resizable(True)
             
             # speed up large lists...
             col.set_sizing(gtk.TREE_VIEW_COLUMN_FIXED)
-            col.set_fixed_width(200)
+            col.set_fixed_width(widths[j])
             self.widget_tree.append_column(col)
-        
+
         # optimizations for large lists
         self.widget_tree.set_fixed_height_mode(True)
 
@@ -419,8 +421,11 @@ class GutenbergSearchWidget(object):
         box.pack_start(tbl, fill=False, expand=False)
         box.pack_start(self.search_button, fill=False, expand=False)
 
-        scroll = gtk.ScrolledWindow()
-        scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_ALWAYS)
+        if MAEMO:
+            scroll = hildon.PannableArea()
+        else:
+            scroll = gtk.ScrolledWindow()
+            scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_ALWAYS)
         box.pack_start(scroll, fill=True, expand=True)
 
         self.widget_tree = gtk.TreeView(self.results)
@@ -492,7 +497,7 @@ class GutenbergDownloadWindow(object):
                     dlg.add_button(gtk.STOCK_CANCEL, 0)
                     def response(dlg, response_id, path):
                         if response_id:
-                            run_fbreader(path)
+                            self.app.start_reader(path)
                         dlg.destroy()
                     dlg.connect("response", response, path)
                     dlg.show()
@@ -573,8 +578,11 @@ class GutenbergDownloadWindow(object):
         box.pack_start(tbl, expand=False, fill=True)
 
         # Download list
-        scroll = gtk.ScrolledWindow()
-        scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_ALWAYS)
+        if MAEMO:
+            scroll = hildon.PannableArea()
+        else:
+            scroll = gtk.ScrolledWindow()
+            scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_ALWAYS)
         self.down_list = gtk.TreeView(self.info)
         scroll.add(self.down_list)
         box.pack_start(scroll, expand=True, fill=True)

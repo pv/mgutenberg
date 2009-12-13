@@ -8,6 +8,10 @@ try:
 except ImportError:
     import gobject as glib
 
+__all__ = ['run_in_gui_thread', 'run_later_in_gui_thread',
+           'assert_gui_thread', 'start_thread', 'run_in_background',
+           'SingleRunner']
+
 def run_in_gui_thread(func, *a, **kw):
     """Run the function in the GUI thread next time when the GUI is idle."""
     def timer():
