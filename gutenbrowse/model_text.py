@@ -11,6 +11,8 @@ import zipfile
 import textwrap
 import re
 
+import plucker
+
 class EbookText(gtk.TextBuffer):
     def __init__(self, filename):
         self._text = None
@@ -32,11 +34,19 @@ class EbookText(gtk.TextBuffer):
     def _load(self, filename):
         try:
             if filename.endswith('.gz'):
-                f = gzip.open(filename, 'r')
+                f = gzip.open(filename, 'rb')
             elif filename.endswith('.bz2'):
-                f = bz2.BZ2File(filename, 'r')
+                f = bz2.BZ2File(filename, 'rb')
+            elif filename.endswith('.zip'):
+                zf = zipfile.ZipFile(filename, 'rb')
+                names = zf.namelist()
+                if len(names) != 1:
+                    raise IOError("Zip file does not contain a single file")
+                f = zf.open(names[0], 'rb')
+            elif filename.endswith('.pdb'):
+                f = plucker.PluckerFile(filename)
             else:
-                f = open(filename, 'r')
+                f = open(filename, 'rb')
             raw_text = f.read()
             f.close()
 
@@ -64,9 +74,22 @@ def rewrap(text):
         return
     text = text.replace(u'\r', u'')
     text = textwrap.dedent(text)
-    text = re.sub(u'\n(?!\\s)', u' ', text)
+
+    sample = text[:80*1000]
+    if len([x for x in sample.split('\n') if x.startswith(' ')]) > 20:
+        # Paragraphs separated by indent
+        text = re.sub(u'\n(?!\\s)', u' ', text)
+    elif max(map(len, sample.split("\n"))) < 100 and '\n\n' in sample:
+        # Paragraphs separated by empty lines
+        text = re.sub(u'\n(?!\n)', u' ', text)
+    else:
+        # Paragraphs on a single line
+        pass
+
+    text = re.sub(u'\s{10,}', u'\n', text)
+    text = re.sub(u'\n[ \t]+', u'\n', text)
     return text
 
 if __name__ == "__main__":
-    text = EbookText("test.txt.bz2")
+    text = EbookText("test2.txt.bz2")
     print text._text

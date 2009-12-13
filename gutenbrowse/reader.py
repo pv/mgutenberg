@@ -42,6 +42,7 @@ class ReaderWindow(object):
             justification=gtk.JUSTIFY_FILL,
             left_margin=20,
             right_margin=20,
+            indent=50,
             wrap_mode=gtk.WRAP_WORD
             )
         scroll.add(self.textview)
