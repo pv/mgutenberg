@@ -102,9 +102,7 @@ class MGutenbergApp(AppBase):
             return self.show_notify(widget, _("Working..."))
 
     def start_reader(self, filename):
-        sub = reader.run(self, filename)
-        if sub:
-            self.readers.append(sub)
+        reader.run(self, filename)
 
     def run(self):
         self.window.show_all()
@@ -257,6 +255,20 @@ class MainWindow(object):
         self.gutenberg_button.handler_unblock_by_func(
             self.on_gutenberg_button_click)
 
+    def on_open_file(self, widget):
+        m = hildon.FileSystemModel()
+        dlg = FileChooserDialog(self.widget, gtk.FILE_CHOOSER_ACTION_OPEN, m)
+        dlg.set_current_folder_uri("file://" + self.app.config['save_dir'])
+
+        def response(dlg, response_id):
+            fn = dlg.get_filename()
+            if fn:
+                self.app.start_reader(fn)
+            dlg.destroy()
+
+        dlg.connect("response", response)
+        dlg.show()
+
     def _construct_menu_maemo(self):
         menu = hildon.AppMenu()
 
@@ -264,14 +276,18 @@ class MainWindow(object):
         self.gutenberg_button = gtk.ToggleButton(label=_("Project Gutenberg"))
         self.book_button = gtk.ToggleButton(label=_("Local books"))
 
-        self.gutenberg_button.connect("clicked", self.on_gutenberg_button_click)
-        self.book_button.connect("clicked", self.on_book_button_click)
+        self.gutenberg_button.connect("toggled", self.on_gutenberg_button_click)
+        self.book_button.connect("toggled", self.on_book_button_click)
 
         self.notebook.connect("switch_page",
                               self.on_notebook_switch_page)
 
         menu.add_filter(self.gutenberg_button)
         menu.add_filter(self.book_button)
+
+        open_file_button = gtk.Button(label=_("Open file"))
+        open_file_button.connect("clicked", self.on_open_file)
+        menu.append(open_file_button)
 
         # Select buttons
         self.menu = menu
@@ -334,9 +350,12 @@ class EbookListWidget(object):
     def filter_func(self, model, it, data=None):
         if not self.filter_text: return True
         entry = model[it]
-        raw = ''.join([entry[0], entry[1], entry[2]]).lower()
+        try:
+            raw = ''.join([entry[0], entry[1], entry[2]]).lower()
+        except TypeError:
+            return True
         return all(x in raw for x in self.filter_text)
-        
+
     # ---
 
     def _construct(self):

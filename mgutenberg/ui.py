@@ -14,13 +14,15 @@ try:
     Window = hildon.Window
     StackableWindow = hildon.StackableWindow
     TextView = hildon.TextView
+    FileChooserDialog = hildon.FileChooserDialog
 except ImportError:
     MAEMO = False
     AppBase = object
     Window = gtk.Window
     StackableWindow = gtk.Window
     TextView = gtk.TextView
+    FileChooserDialog = gtk.FileChooserDialog
 
 __all__ = ['gtk', 'gobject', 'hildon', 'MAEMO', 'Window', 'StackableWindow',
-           'TextView', 'AppBase', '_']
+           'TextView', 'AppBase', 'FileChooserDialog', '_']
 __all__.extend(guithread.__all__)
