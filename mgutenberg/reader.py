@@ -98,7 +98,7 @@ class ReaderWindow(object):
             self._construct_menu_maemo()
 
     def on_toggle_portrait(self, widget):
-        if self.portrait_button.get_active():
+        if widget.get_active():
             hildon.hildon_gtk_window_set_portrait_flags(
                 self.widget,
                 hildon.PORTRAIT_MODE_SUPPORT|hildon.PORTRAIT_MODE_REQUEST)
@@ -106,17 +106,41 @@ class ReaderWindow(object):
             hildon.hildon_gtk_window_set_portrait_flags(
                 self.widget, hildon.PORTRAIT_MODE_SUPPORT)
 
+    def on_toggle_inverse_colors(self, widget):
+        if widget.get_active():
+            gray = gtk.gdk.Color(40000, 40000, 40000)
+            black = gtk.gdk.Color(0, 0, 0)
+            if MAEMO:
+                self.textview.set_name('HildonTextView.hildon-reversed-textview')
+            self.textview.modify_text(gtk.STATE_NORMAL, gray)
+            self.textview.modify_base(gtk.STATE_NORMAL, black)
+            self.info.modify_fg(gtk.STATE_NORMAL, gray)
+        else:
+            if MAEMO:
+                self.textview.set_name('HildonTextView')
+            self.textview.modify_text(gtk.STATE_NORMAL, None)
+            self.textview.modify_base(gtk.STATE_NORMAL, None)
+            self.info.modify_fg(gtk.STATE_NORMAL, None)
+        self.app.config['inverse_colors'] = widget.get_active()
+
     def _construct_menu_maemo(self):
         menu = hildon.AppMenu()
 
-        # Filter buttons
-        self.portrait_button = gtk.ToggleButton(label=_("Portrait"))
-        self.portrait_button.connect("toggled", self.on_toggle_portrait)
+        portrait_button = gtk.ToggleButton(label=_("Portrait"))
+        portrait_button.connect("toggled", self.on_toggle_portrait)
 
-        menu.append(self.portrait_button)
+        inverse_button = gtk.ToggleButton(label=_("Inverse colors"))
+        inverse_button.connect("toggled", self.on_toggle_inverse_colors)
+
+        menu.append(portrait_button)
+        menu.append(inverse_button)
 
         # Select buttons
         self.menu = menu
+
+        # Restore from config
+        if self.app.config['inverse_colors']:
+            inverse_button.set_active(True)
 
     def _update_info(self):
         if self._destroyed:

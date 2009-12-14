@@ -11,7 +11,8 @@ import reader
 CONFIG_SCHEMA = {
     'search_dirs': (list, str),
     'save_dir': str,
-    'positions': (dict, int)
+    'positions': (dict, int),
+    'inverse_colors': bool,
 }
 
 def main():
@@ -32,6 +33,7 @@ def main():
     config.setdefault('search_dirs', sdirs)
     config.setdefault('save_dir', sdirs[0])
     config.setdefault('positions', {})
+    config.setdefault('inverse_colors', False)
 
     # Run
     app = MGutenbergApp(config)

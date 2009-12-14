@@ -417,6 +417,8 @@ class Config(dict):
                 e.attrib['key'] = str(k)
                 el.append(e)
             return el
+        elif isinstance(o, bool):
+            return ET.Element('bool', dict(value=str(int(o))))
         elif isinstance(o, int):
             return ET.Element('int', dict(value=str(o)))
         elif isinstance(o, float):
@@ -427,7 +429,8 @@ class Config(dict):
             raise NotImplementedError
 
     def _fromxml(self, el):
-        valf = {'int': int, 'str': str, 'float': float}
+        valf = {'int': int, 'str': str, 'float': float,
+                'bool': lambda x: bool(int(x))}
 
         if el.tag == 'list':
             o = []
