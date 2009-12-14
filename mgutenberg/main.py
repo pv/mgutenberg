@@ -55,19 +55,6 @@ class MGutenbergApp(AppBase):
 
         if MAEMO:
             self.add_window(self.window.widget)
-        
-        # Refresh ebook list
-        
-        def done_cb(r):
-            end_notify()
-            self.window.ebook_list.thaw()
-            if isinstance(r, Exception):
-                self.app.error_message(_("Error refreshing book list"), r)
-
-        end_notify = self.show_notify(self.window.widget,
-                                      _("Looking for books..."))
-        self.window.ebook_list.freeze()
-        self.ebook_list.refresh(callback=done_cb)
 
     def error_message(self, text, moreinfo=""):
         dlg = gtk.MessageDialog(self.window.widget,
@@ -106,7 +93,22 @@ class MGutenbergApp(AppBase):
 
     def run(self):
         self.window.show_all()
-        
+
+        # Refresh ebook list
+
+        def done_cb(r):
+            end_notify()
+            self.window.ebook_list.thaw()
+            if isinstance(r, Exception):
+                self.app.error_message(_("Error refreshing book list"), r)
+
+        end_notify = self.show_notify(self.window.widget,
+                                      _("Looking for books..."))
+        self.window.ebook_list.freeze()
+        self.ebook_list.refresh(callback=done_cb)
+
+        # Start
+
         gtk.gdk.threads_init()
         gtk.main()
 
