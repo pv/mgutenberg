@@ -184,11 +184,17 @@ class ReaderWindow(object):
         if time.time() - press[2] > 0.5:
             return False
 
-        # Check direction, and pan
+        # Unfullscreen check
         w, h = self.widget.size_request()
-        if event.y > 2*h/3 and min(event.x, abs(w - event.x)) > 70:
+        if self._fullscreen:
+            x_ok = abs(event.x) > 70 or abs(event.y) > 70
+        else:
+            x_ok = True
+
+        # Check direction, and pan
+        if event.y > 2*h/3 and x_ok:
             self._page_down()
-        elif event.y < h/3 and min(event.x, abs(w - event.x)) > 70:
+        elif event.y < h/3 and x_ok:
             self._page_up()
         else:
             if self._fullscreen:
