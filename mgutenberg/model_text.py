@@ -40,28 +40,27 @@ class EbookText(gtk.TextBuffer):
 
     def _load(self, filename):
         try:
-            if filename.endswith('.gz'):
+            basefn, ext = os.path.splitext(filename)
+            if ext == '.gz':
                 f = gzip.open(filename, 'rb')
-                filename = filename[:-4]
-            elif filename.endswith('.bz2'):
+                filename = basefn
+            elif ext == '.bz2':
                 f = bz2.BZ2File(filename, 'rb')
-                filename = filename[:-4]
-            elif filename.endswith('.zip'):
+                filename = basefn
+            elif ext == '.zip':
                 zf = zipfile.ZipFile(filename, 'rb')
                 names = zf.namelist()
                 if len(names) != 1:
                     raise IOError("Zip file does not contain a single file")
                 f = zf.open(names[0], 'rb')
                 filename = names[0]
-            elif filename.endswith('.pdb'):
+            elif ext == '.pdb':
                 f = plucker.PluckerFile(filename)
                 # XXX: not implemented
                 raise IOError("Plucker supprot not implemented yet.")
-            elif filename.endswith('.txt'):
-                f = open(filename, 'rb')
             else:
-                raise IOError("Don't know how to open this type of files")
-
+                f = open(filename, 'rb')
+ 
             self._load_stream(filename, f)
             f.close()
         except IOError, e:
@@ -69,10 +68,13 @@ class EbookText(gtk.TextBuffer):
             self._error = e
 
     def _load_stream(self, filename, f):
-        if filename.endswith('.html') or filename.endswith('.htm'):
+        basefn, ext = os.path.splitext(filename)
+        if ext in ('.html', '.htm'):
             self._load_html(f)
-        else:
+        elif ext in ('.txt', '.rst'):
             self._load_plain_text(f)
+        else:
+            raise IOError("Don't know how to open this type of files")
 
     def _load_html(self, f):
         raw_text = f.read()
