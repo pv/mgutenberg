@@ -105,6 +105,7 @@ class ReaderWindow(object):
         else:
             hildon.hildon_gtk_window_set_portrait_flags(
                 self.widget, hildon.PORTRAIT_MODE_SUPPORT)
+        self.app.config['portrait'] = widget.get_active()
 
     def on_toggle_inverse_colors(self, widget):
         if widget.get_active():
@@ -141,6 +142,9 @@ class ReaderWindow(object):
         # Restore from config
         if self.app.config['inverse_colors']:
             inverse_button.set_active(True)
+
+        if self.app.config['portrait']:
+            portrait_button.set_active(True)
 
     def _update_info(self):
         if self._destroyed:

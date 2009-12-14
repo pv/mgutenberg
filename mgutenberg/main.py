@@ -13,6 +13,7 @@ CONFIG_SCHEMA = {
     'save_dir': str,
     'positions': (dict, int),
     'inverse_colors': bool,
+    'portrait': bool,
 }
 
 def main():
@@ -34,6 +35,7 @@ def main():
     config.setdefault('save_dir', sdirs[0])
     config.setdefault('positions', {})
     config.setdefault('inverse_colors', False)
+    config.setdefault('portrait', False)
 
     # Run
     app = MGutenbergApp(config)
