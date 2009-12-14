@@ -242,6 +242,7 @@ class ReaderWindow(object):
 def run(app, filename):
     notify_cb = app.show_notify(app.window.widget, _("Loading..."))
 
+    @assert_gui_thread
     def load_buffer_cb(textbuffer):
         notify_cb()
         error = None
@@ -259,11 +260,10 @@ def run(app, filename):
             dlg.set_markup(msg)
             dlg.format_secondary_text(title + "\n" + error)
             dlg.connect("response", lambda obj, ev: dlg.destroy())
-            dlg.run()
-            return None
+            dlg.show()
         else:
             reader = ReaderWindow(app, textbuffer, filename)
             reader.show_all()
-            return reader
+            app.readers.append(reader)
 
     run_in_background(EbookText, filename, callback=load_buffer_cb)
