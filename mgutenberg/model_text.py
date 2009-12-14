@@ -11,6 +11,7 @@ import bz2
 import zipfile
 import textwrap
 import re
+from StringIO import StringIO
 
 from HTMLParser import HTMLParser
 import htmlentitydefs
@@ -48,11 +49,12 @@ class EbookText(gtk.TextBuffer):
                 f = bz2.BZ2File(filename, 'rb')
                 filename = basefn
             elif ext == '.zip':
-                zf = zipfile.ZipFile(filename, 'rb')
+                zf = zipfile.ZipFile(filename, 'r')
                 names = zf.namelist()
                 if len(names) != 1:
                     raise IOError("Zip file does not contain a single file")
-                f = zf.open(names[0], 'rb')
+                f = StringIO(zf.read(names[0]))
+                zf.close()
                 filename = names[0]
             elif ext == '.pdb':
                 f = plucker.PluckerFile(filename)
@@ -60,7 +62,7 @@ class EbookText(gtk.TextBuffer):
                 raise IOError("Plucker supprot not implemented yet.")
             else:
                 f = open(filename, 'rb')
- 
+
             self._load_stream(filename, f)
             f.close()
         except IOError, e:
@@ -77,8 +79,11 @@ class EbookText(gtk.TextBuffer):
             raise IOError("Don't know how to open this type of files")
 
     def _load_html(self, f):
-        raw_text = f.read()
-        f.close()
+        if isinstance(f, str):
+            raw_text = str
+        else:
+            raw_text = f.read()
+
         for encoding in detect_encoding(raw_text):
             try:
                 raw_text = unicode(raw_text, encoding)
@@ -194,7 +199,10 @@ class EbookText(gtk.TextBuffer):
         html.flush()
 
     def _load_plain_text(self, f):
-        raw_text = f.read()
+        if isinstance(f, str):
+            raw_text = str
+        else:
+            raw_text = f.read()
 
         for encoding in detect_encoding(raw_text):
             try:
