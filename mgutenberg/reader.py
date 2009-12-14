@@ -183,9 +183,9 @@ class ReaderWindow(object):
         # Require a tap, not panning etc.
         if not press:
             return False
-        if math.hypot(press[0]-event.x, press[1]-event.y) > 50:
+        if math.hypot(press[0]-event.x, press[1]-event.y) > 70 / 2:
             return False
-        if time.time() - press[2] > 0.5:
+        if time.time() - press[2] > 0.25:
             return False
 
         # Unfullscreen check
