@@ -58,8 +58,6 @@ class EbookText(gtk.TextBuffer):
                 filename = names[0]
             elif ext == '.pdb':
                 f = plucker.PluckerFile(filename)
-                # XXX: not implemented
-                raise IOError("Plucker supprot not implemented yet.")
             else:
                 f = open(filename, 'rb')
 
@@ -75,6 +73,8 @@ class EbookText(gtk.TextBuffer):
             self._load_html(f)
         elif ext in ('.txt', '.rst'):
             self._load_plain_text(f)
+        elif ext in ('.pdb'):
+            self._load_plucker(f)
         else:
             raise IOError("Don't know how to open this type of files")
 
@@ -197,6 +197,46 @@ class EbookText(gtk.TextBuffer):
         html = HandleHTML()
         html.feed(raw_text)
         html.flush()
+
+    def _load_plucker(self, f):
+        tag_bold = self.create_tag("bold", weight=pango.WEIGHT_BOLD)
+        tag_emph = self.create_tag("emph", style=pango.STYLE_ITALIC)
+        tag_big = self.create_tag("big", scale=1.5)
+
+        def set_tag(tag, flag):
+            if tag in tags:
+                if not flag:
+                    tags.remove(tag)
+            else:
+                if flag:
+                    tags.append(tag)
+
+        tags = []
+        new_line = True
+        for cmd, data in f:
+            if cmd == 'text':
+                if new_line:
+                    data = data.lstrip()
+                    new_line = False
+                self.insert_with_tags(self.get_end_iter(),
+                                      data.encode('utf-8'),
+                                      *tags)
+            elif cmd == 'br':
+                self.insert_with_tags(self.get_end_iter(), '\n', *tags)
+                new_line = True
+            elif cmd == 'para':
+                del tags[:]
+                self.insert_with_tags(self.get_end_iter(), '\n')
+                new_line = True
+            elif cmd == 'em':
+                set_tag(tag_emph, data)
+            elif cmd == 'font':
+                if data == 'b':
+                    set_tag(tag_bold, True)
+                elif data in ('h1','h2','h3','h4'):
+                    set_tag(tag_big, True)
+                else:
+                    del tags[:]
 
     def _load_plain_text(self, f):
         if isinstance(f, str):
