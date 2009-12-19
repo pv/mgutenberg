@@ -7,6 +7,9 @@ from gettext import gettext as _
 import guithread
 from guithread import *
 
+__all__ = ['gtk', 'gobject', 'MAEMO', 'Window', 'StackableWindow',
+           'TextView', 'AppBase', 'FileChooserDialog', '_']
+
 try:
     import hildon
     MAEMO = True
@@ -15,6 +18,7 @@ try:
     StackableWindow = hildon.StackableWindow
     TextView = hildon.TextView
     FileChooserDialog = hildon.FileChooserDialog
+    __all__.append('hildon')
 except ImportError:
     MAEMO = False
     AppBase = object
@@ -23,6 +27,4 @@ except ImportError:
     TextView = gtk.TextView
     FileChooserDialog = gtk.FileChooserDialog
 
-__all__ = ['gtk', 'gobject', 'hildon', 'MAEMO', 'Window', 'StackableWindow',
-           'TextView', 'AppBase', 'FileChooserDialog', '_']
 __all__.extend(guithread.__all__)

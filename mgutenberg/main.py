@@ -122,16 +122,11 @@ class MainWindow(object):
         <ui>
           <menubar name="menu_bar">
             <menu name="file" action="file">
-              <menuitem action="read" />
-              <menuitem action="remove" />
+              <menuitem action="open" />
               <separator name="quit_sep" />
               <menuitem name="quit" action="quit" />
             </menu>
           </menubar>
-          <popup name="ebook_popup">
-            <menuitem action="read" />
-            <menuitem action="remove" />
-          </popup>
         </ui>
         """]
 
@@ -153,10 +148,20 @@ class MainWindow(object):
 
     # ---
 
-    def on_action_read(self, action):
-        pass # XXX: implement
-    
-    def on_action_remove(self, action):
+    def on_action_open(self, action):
+        dlg = FileChooserDialog(parent=self.widget,
+                                action=gtk.FILE_CHOOSER_ACTION_OPEN)
+        dlg.set_current_folder_uri("file://" + self.app.config['save_dir'])
+
+        def response(dlg, response_id):
+            fn = dlg.get_filename()
+            if fn:
+                self.app.start_reader(fn)
+            dlg.destroy()
+
+        dlg.connect("response", response)
+        dlg.show()
+        print "FUU"
         pass # XXX: implement
 
     def on_action_quit(self, action):
@@ -216,10 +221,8 @@ class MainWindow(object):
         actiongroup = gtk.ActionGroup('actiongroup')
         actiongroup.add_actions([
             ('file', None, _("_File")),
-            ('read', None, _("_Read"), None,
-             None, self.on_action_read),
-            ('remove', None, _("_Remove..."), None,
-             None, self.on_action_remove),
+            ('open', None, _("_Open..."), None,
+             None, self.on_action_open),
             ('quit', gtk.STOCK_QUIT, _("_Quit"), None,
              None, self.on_action_quit)
         ])
