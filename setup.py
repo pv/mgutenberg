@@ -2,7 +2,7 @@
 from setuptools import setup, find_packages
 import subprocess, os
 
-mod = __import__('mgutenberg/__init__')
+mod = __import__('mgutenberg')
 version = mod.__version__
 
 if 'dev' in version:
