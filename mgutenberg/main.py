@@ -300,6 +300,15 @@ class MainWindow(object):
         self.menu = menu
 
 class EbookListWidget(object):
+    UI_XMLS = ["""
+    <ui>
+      <popup name="popup">
+        <menuitem action="read" />
+        <menuitem action="delete" />
+      </menubar>
+    </ui>
+    """]
+
     def __init__(self, app):
         self.app = app
         self.filter_text = ''
@@ -315,7 +324,16 @@ class EbookListWidget(object):
         self.widget_tree.connect("row-activated", self.on_activated)
         self.widget_tree.connect("map-event", self.on_map_event)
         self.filter_entry.connect("changed", self.on_filter_changed)
-        
+
+        # Click events
+        self.widget_tree.add_events(gtk.gdk.BUTTON_RELEASE_MASK
+                                    | gtk.gdk.BUTTON_PRESS_MASK)
+        self.widget_tree.connect("button-press-event",
+                                 self.on_button_press_event)
+        self.widget_tree.connect("button-release-event",
+                                 self.on_button_release_event)
+        self._active_item = None
+
     def freeze(self):
         self.widget_tree.set_model(None)
         
@@ -323,7 +341,65 @@ class EbookListWidget(object):
         self.widget_tree.set_model(self.store)
 
     # ---
-    
+
+    def _show_context_menu(self, x, y, time, button):
+        if self._active_item is not False:
+            return
+        pthinfo = self.widget_tree.get_path_at_pos(int(x), int(y))
+        if pthinfo is not None:
+            path, col, cellx, celly = pthinfo
+            self._active_item = path
+            self.widget_tree.grab_focus()
+            self.widget_tree.set_cursor(path, col, 0)
+            self.menu.popup(None, None, None, button, time)
+
+    def on_button_press_event(self, widget, event):
+        self._active_item = False
+        if MAEMO:
+            run_later_in_gui_thread(500, self._show_context_menu,
+                                    event.x, event.y, event.time, event.button)
+        else:
+            if event.button == 3:
+                self._show_context_menu(event.x, event.y, event.time,
+                                        event.button)
+
+    def on_button_release_event(self, widget, event):
+        self._active_item = None
+
+    def on_menu_read(self, widget):
+        model = self.widget_tree.get_model()
+        try:
+            entry = model[model.get_iter(self._active_item)]
+            self.app.start_reader(entry[3])
+        except ValueError:
+            pass
+        self._active_item = None
+
+    def on_menu_delete(self, widget):
+        model = self.widget_tree.get_model()
+        try:
+            it = model.get_iter(self._active_item)
+            entry = model[it]
+            self._active_item = None
+
+            def response(widget, response_id):
+                if response_id == gtk.RESPONSE_YES:
+                    model.delete_file(it)
+                dlg.destroy()
+            if MAEMO:
+                dlg = hildon.Note("confirmation",
+                                  self.app.window.widget,
+                                  "Delete file\n%s"%os.path.basename(entry[3]))
+            else:
+                dlg = gtk.MessageDialog(type=gtk.MESSAGE_QUESTION,
+                                        buttons=gtk.BUTTONS_YES_NO)
+                dlg.set_markup("<b>Delete file?</b>")
+                dlg.format_secondary_text(os.path.basename(entry[3]))
+            dlg.connect("response", response)
+            dlg.show()
+        except ValueError:
+            pass
+
     def on_activated(self, treeview, it, column):
         entry = treeview.get_model()[it]
         self.app.start_reader(entry[3])
@@ -415,6 +491,18 @@ class EbookListWidget(object):
 
         # optimizations for large lists
         self.widget_tree.set_fixed_height_mode(True)
+
+        # context menu
+        self.menu = gtk.Menu()
+        read = gtk.MenuItem(_("Read"))
+        delete = gtk.MenuItem(_("Delete"))
+        self.menu.append(read)
+        self.menu.append(delete)
+        self.menu.show_all()
+        read.connect("activate", self.on_menu_read)
+        delete.connect("activate", self.on_menu_delete)
+        if MAEMO:
+            self.menu.set_name("hildon-context-sensitive-menu")
 
 class GutenbergSearchWidget(object):
     def __init__(self, app):

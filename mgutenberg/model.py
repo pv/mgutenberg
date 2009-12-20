@@ -93,6 +93,13 @@ class EbookList(gtk.ListStore):
     def add(self, author=u"", title=u"", language=u"", file_name=""):
         return self.append((author, title, language, file_name))
 
+    def delete_file(self, it):
+        entry = self[it]
+        fn = entry[3]
+        if os.path.isfile(entry[3]):
+            os.unlink(entry[3])
+        self.remove(it)
+
     def refresh(self, callback=None):
         self.clear()
 
