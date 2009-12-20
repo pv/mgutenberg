@@ -96,6 +96,8 @@ class ReaderWindow(object):
 
         if MAEMO:
             self._construct_menu_maemo()
+        else:
+            self.menu = None
 
     def on_toggle_portrait(self, widget):
         if widget.get_active():
