@@ -150,19 +150,21 @@ class MainWindow(object):
 
     def on_action_open(self, action):
         dlg = FileChooserDialog(parent=self.widget,
+                                buttons=(gtk.STOCK_CANCEL,
+                                         gtk.RESPONSE_CANCEL,
+                                         gtk.STOCK_OPEN,
+                                         gtk.RESPONSE_ACCEPT),
                                 action=gtk.FILE_CHOOSER_ACTION_OPEN)
-        dlg.set_current_folder_uri("file://" + self.app.config['save_dir'])
 
         def response(dlg, response_id):
-            fn = dlg.get_filename()
-            if fn:
-                self.app.start_reader(fn)
+            if response_id == gtk.RESPONSE_ACCEPT:
+                fn = dlg.get_filename()
+                if fn:
+                    self.app.start_reader(fn)
             dlg.destroy()
 
         dlg.connect("response", response)
         dlg.show()
-        print "FUU"
-        pass # XXX: implement
 
     def on_action_quit(self, action):
         self.app.quit()
