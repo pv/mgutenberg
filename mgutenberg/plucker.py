@@ -244,8 +244,9 @@ class PluckerFile(object):
 
 if __name__ == "__main__":
     p = PluckerFile('test.pdb')
+    import time
+    start = time.time()
     for cmd, data in p:
-        if isinstance(data, unicode):
-            print cmd, (u">%s<" % data).encode('utf-8')
-        else:
-            print cmd, data
+        pass
+    print time.time() - start
+

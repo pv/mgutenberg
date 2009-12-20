@@ -211,26 +211,38 @@ class EbookText(gtk.TextBuffer):
                 if flag:
                     tags.append(tag)
 
+        def flush_text():
+            if not text:
+                return
+            self.insert_with_tags(self.get_end_iter(),
+                                  u"".join(text).encode('utf-8'),
+                                  *tags)
+            del text[:]
+
         tags = []
+        text = []
         new_line = True
         for cmd, data in f:
             if cmd == 'text':
                 if new_line:
                     data = data.lstrip()
                     new_line = False
-                self.insert_with_tags(self.get_end_iter(),
-                                      data.encode('utf-8'),
-                                      *tags)
+                text.append(data)
             elif cmd == 'br':
-                self.insert_with_tags(self.get_end_iter(), '\n', *tags)
+                if not new_line:
+                    text.append(u"\n")
                 new_line = True
             elif cmd == 'para':
+                flush_text()
                 del tags[:]
-                self.insert_with_tags(self.get_end_iter(), '\n')
+                if not new_line:
+                    text.append(u"\n")
                 new_line = True
             elif cmd == 'em':
+                flush_text()
                 set_tag(tag_emph, data)
             elif cmd == 'font':
+                flush_text()
                 if data == 'b':
                     set_tag(tag_bold, True)
                 elif data in ('h1','h2','h3','h4'):
@@ -286,3 +298,11 @@ def rewrap(text):
     text = re.sub(u'\s{10,}', u'\n', text)
     text = re.sub(u'\n[ \t]+', u'\n', text)
     return text
+
+if __name__ == "__main__":
+    import cProfile as profile
+    import time
+    start = time.time()
+    txt = EbookText('test.pdb')
+    print time.time() - start
+
