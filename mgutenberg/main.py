@@ -3,6 +3,7 @@ import subprocess
 import os
 import optparse
 import urllib
+import math
 
 from ui import *
 from model import *
@@ -325,11 +326,14 @@ class EbookListWidget(object):
 
         # Click events
         self.widget_tree.add_events(gtk.gdk.BUTTON_RELEASE_MASK
-                                    | gtk.gdk.BUTTON_PRESS_MASK)
+                                    | gtk.gdk.BUTTON_PRESS_MASK
+                                    | gtk.gdk.POINTER_MOTION_MASK)
         self.widget_tree.connect("button-press-event",
                                  self.on_button_press_event)
         self.widget_tree.connect("button-release-event",
                                  self.on_button_release_event)
+        self.widget_tree.connect("motion-notify-event",
+                                 self.on_motion_notify_event)
         self._active_item = None
 
     def freeze(self):
@@ -353,6 +357,7 @@ class EbookListWidget(object):
 
     def on_button_press_event(self, widget, event):
         self._active_item = False
+        self._active_item_pos = (event.x, event.y)
         if MAEMO:
             run_later_in_gui_thread(500, self._show_context_menu,
                                     event.x, event.y, event.time, event.button)
@@ -360,9 +365,20 @@ class EbookListWidget(object):
             if event.button == 3:
                 self._show_context_menu(event.x, event.y, event.time,
                                         event.button)
+                return True
+        return False
 
     def on_button_release_event(self, widget, event):
         self._active_item = None
+        return False
+
+    def on_motion_notify_event(self, widget, event):
+        if MAEMO:
+            if self._active_item is False:
+                x, y = self._active_item_pos
+                if math.hypot(x - event.x, y - event.y) > 70:
+                    self._active_item = None
+        return False
 
     def on_menu_read(self, widget):
         model = self.widget_tree.get_model()
