@@ -57,16 +57,14 @@ class MGutenbergApp(AppBase):
             self.add_window(self.window.widget)
 
     def error_message(self, text, moreinfo=""):
-        dlg = gtk.MessageDialog(self.window.widget,
-                                type=gtk.MESSAGE_ERROR,
-                                buttons=gtk.BUTTONS_OK)
-        dlg.set_markup("<b>%s</b>" % text)
-        dlg.format_secondary_text(str(moreinfo))
+        dlg = info_dialog(parent=self.window.widget,
+                          text="<b>%s</b>" % text,
+                          secondary_text=str(moreinfo))
         def response(dlg, response_id):
             dlg.destroy()
         dlg.connect("response", response)
         dlg.show()
-    
+
     def show_notify(self, widget, text):
         if MAEMO:
             banner = hildon.hildon_banner_show_animation(
@@ -383,18 +381,12 @@ class EbookListWidget(object):
             self._active_item = None
 
             def response(widget, response_id):
-                if response_id == gtk.RESPONSE_YES:
+                if response_id == gtk.RESPONSE_OK:
                     model.delete_file(it)
                 dlg.destroy()
-            if MAEMO:
-                dlg = hildon.Note("confirmation",
-                                  self.app.window.widget,
-                                  "Delete file\n%s"%os.path.basename(entry[3]))
-            else:
-                dlg = gtk.MessageDialog(type=gtk.MESSAGE_QUESTION,
-                                        buttons=gtk.BUTTONS_YES_NO)
-                dlg.set_markup("<b>Delete file?</b>")
-                dlg.format_secondary_text(os.path.basename(entry[3]))
+            dlg = confirm_dialog(parent=self.app.window.widget,
+                                 text="Delete file?",
+                                 secondary_text=os.path.basename(entry[3]))
             dlg.connect("response", response)
             dlg.show()
         except ValueError:
