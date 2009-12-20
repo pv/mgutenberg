@@ -50,12 +50,9 @@ class EbookText(gtk.TextBuffer):
                 filename = basefn
             elif ext == '.zip':
                 zf = zipfile.ZipFile(filename, 'r')
-                names = zf.namelist()
-                if len(names) != 1:
-                    raise IOError("Zip file does not contain a single file")
-                f = StringIO(zf.read(names[0]))
+                filename = self._pick_zip_name(zf.namelist())
+                f = StringIO(zf.read(filename))
                 zf.close()
-                filename = names[0]
             elif ext == '.pdb':
                 f = plucker.PluckerFile(filename)
             else:
@@ -66,6 +63,15 @@ class EbookText(gtk.TextBuffer):
         except IOError, e:
             self._text = None
             self._error = e
+
+    def _pick_zip_name(self, names):
+        for name in names:
+            if name.endswith('.htm') or name.endswith('.html'):
+                return name
+        for name in names:
+            if name.endswith('.txt'):
+                return name
+        raise IOError("Zip file does not appear to contain text material")
 
     def _load_stream(self, filename, f):
         basefn, ext = os.path.splitext(filename)
@@ -83,13 +89,6 @@ class EbookText(gtk.TextBuffer):
             raw_text = str
         else:
             raw_text = f.read()
-
-        for encoding in detect_encoding(raw_text):
-            try:
-                raw_text = unicode(raw_text, encoding)
-                break
-            except UnicodeError:
-                pass
 
         tag_bold = self.create_tag("bold", weight=pango.WEIGHT_BOLD)
         tag_emph = self.create_tag("emph", style=pango.STYLE_ITALIC)
@@ -135,9 +134,11 @@ class EbookText(gtk.TextBuffer):
                 elif tag == 'img':
                     attrs = dict(attrs)
                     if 'alt' in attrs and attrs['alt'].strip():
-                        self.handle_data('[IMAGE: %s]' % attrs['alt'].strip())
+                        self.handle_data(u'[IMAGE: ')
+                        self.handle_data(attrs['alt'].strip().upper())
+                        self.handle_data(u']')
                     else:
-                        self.handle_data('[IMAGE]')
+                        self.handle_data(u'[IMAGE]')
 
             def handle_meta(self, attrs):
                 attrs = dict(attrs)
@@ -169,6 +170,12 @@ class EbookText(gtk.TextBuffer):
             def handle_data(self, data):
                 if self.omit:
                     return
+                if not isinstance(data, unicode):
+                    try:
+                        data = unicode(data, self.encoding)
+                    except UnicodeError:
+                        data = unicode(data, 'latin1')
+
                 data = data.replace('\r', '')
                 data = data.replace('\n', ' ')
                 if self.slurp_space:
@@ -300,6 +307,7 @@ def rewrap(text):
     return text
 
 if __name__ == "__main__":
+    txt = EbookText('x.html')
     import cProfile as profile
     import time
     start = time.time()
