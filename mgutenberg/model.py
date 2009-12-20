@@ -433,7 +433,8 @@ class Config(dict):
         elif isinstance(o, str) or isinstance(o, unicode):
             return ET.Element('str', dict(value=o))
         else:
-            raise NotImplementedError
+            import warnings
+            warnings.warn("Type of element %r not supported" % o)
 
     def _fromxml(self, el):
         valf = {'int': int, 'str': str, 'float': float,

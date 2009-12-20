@@ -15,6 +15,7 @@ CONFIG_SCHEMA = {
     'positions': (dict, int),
     'inverse_colors': bool,
     'portrait': bool,
+    'ui_page': int,
 }
 
 def main():
@@ -37,6 +38,7 @@ def main():
     config.setdefault('positions', {})
     config.setdefault('inverse_colors', False)
     config.setdefault('portrait', False)
+    config.setdefault('ui_page', 1)
 
     # Run
     app = MGutenbergApp(config)
@@ -135,15 +137,23 @@ class MainWindow(object):
         self.ebook_list = EbookListWidget(self.app)
         self.gutenberg_search = GutenbergSearchWidget(self.app)
 
+        self._start_ui_page = self.app.config['ui_page'] % 2
+
         self._construct()
         self.widget.connect("destroy", self.on_destroy)
+        self.notebook.connect("switch_page",
+                              self.on_notebook_switch_page)
 
     def show_all(self):
         self.widget.show_all()
 
+        # Set up menu
         if self.menu is not None:
             self.widget.set_app_menu(self.menu)
             self.menu.show_all()
+
+        # Set visible page
+        self.notebook.set_current_page(self._start_ui_page)
 
     # ---
 
@@ -250,16 +260,19 @@ class MainWindow(object):
         self.on_notebook_switch_page(None, None, 1)
 
     def on_notebook_switch_page(self, notebook, page, page_num):
-        self.book_button.handler_block_by_func(self.on_book_button_click)
-        self.gutenberg_button.handler_block_by_func(
-            self.on_gutenberg_button_click)
+        self.app.config['ui_page'] = int(page_num)
 
-        self.book_button.set_active(page_num == 0)
-        self.gutenberg_button.set_active(page_num == 1)
+        if MAEMO:
+            self.book_button.handler_block_by_func(self.on_book_button_click)
+            self.gutenberg_button.handler_block_by_func(
+                self.on_gutenberg_button_click)
 
-        self.book_button.handler_unblock_by_func(self.on_book_button_click)
-        self.gutenberg_button.handler_unblock_by_func(
-            self.on_gutenberg_button_click)
+            self.book_button.set_active(page_num == 0)
+            self.gutenberg_button.set_active(page_num == 1)
+
+            self.book_button.handler_unblock_by_func(self.on_book_button_click)
+            self.gutenberg_button.handler_unblock_by_func(
+                self.on_gutenberg_button_click)
 
     def on_open_file(self, widget):
         m = hildon.FileSystemModel()
@@ -275,6 +288,13 @@ class MainWindow(object):
         dlg.connect("response", response)
         dlg.show()
 
+    def on_help(self, widget):
+        filename = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                'doc', 'index.html')
+        subprocess.call(["browser_dbuscmd.sh",
+                         "open_new_window",
+                         "file://%s" % filename])
+
     def _construct_menu_maemo(self):
         menu = hildon.AppMenu()
 
@@ -285,15 +305,16 @@ class MainWindow(object):
         self.gutenberg_button.connect("toggled", self.on_gutenberg_button_click)
         self.book_button.connect("toggled", self.on_book_button_click)
 
-        self.notebook.connect("switch_page",
-                              self.on_notebook_switch_page)
-
         menu.add_filter(self.gutenberg_button)
         menu.add_filter(self.book_button)
 
         open_file_button = gtk.Button(label=_("Open file"))
         open_file_button.connect("clicked", self.on_open_file)
         menu.append(open_file_button)
+
+        help_button = gtk.Button(label=_("About"))
+        help_button.connect("clicked", self.on_help)
+        menu.append(help_button)
 
         # Select buttons
         self.menu = menu

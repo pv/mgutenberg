@@ -30,6 +30,8 @@ setup(
     license = "BSD, 3-clause",
     ##
     packages = find_packages(),
+    package_data={'mgutenberg': ['doc/*.html', 'doc/*.css', 'doc/*.png',
+                                 'doc/*.gif']},
     scripts = ["mgutenberg/mgutenberg"],
     test_suite = 'nose.collector',
 )
