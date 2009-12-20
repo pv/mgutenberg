@@ -1,0 +1,30 @@
+body { 
+  background: #333;
+  color: white;
+  font-size: 62.5%;
+  font-family: "Arial", sans-serif;
+}
+
+div.content {
+  background: white;
+  color: black;
+  padding: 1em;
+  border: solid 2px #aaa;
+  font-size: 1.4em;
+  text-align: justify;
+  line-height: 1.5;
+}
+
+div.content h1 { 
+  font-size: 1.7em;
+  font-weight: bold;
+}
+
+div.content h2 { 
+  font-size: 1.4em;
+  font-weight: bold;
+}
+
+div.content div { 
+  border-bottom: solid 1px #ccc;
+}

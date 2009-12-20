@@ -9,7 +9,7 @@ dist
 *.orig
 *.rej
 footest
-debian/gutenbrowse
+debian/mgutenberg
 *.debhelper
 *.substvars
 debian/files
