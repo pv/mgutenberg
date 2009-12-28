@@ -152,6 +152,8 @@ class MainWindow(object):
 
     def show_all(self):
         self.widget.show_all()
+        if MAEMO:
+            self.ebook_list.search.hide()
 
         # Set up menu
         if self.menu is not None:
@@ -349,18 +351,26 @@ class EbookListWidget(object):
 
         self.widget_tree.connect("row-activated", self.on_activated)
         self.widget_tree.connect("map-event", self.on_map_event)
-        self.filter_entry.connect("changed", self.on_filter_changed)
+        if MAEMO:
+            self.search.connect("close", self.on_search_close)
+            self.search.connect("history-append", self.on_search_history_append)
+
+        if self.filter_entry is not None:
+            self.filter_entry.connect("changed", self.on_filter_changed)
 
         # Click events
         self.widget_tree.add_events(gtk.gdk.BUTTON_RELEASE_MASK
                                     | gtk.gdk.BUTTON_PRESS_MASK
-                                    | gtk.gdk.POINTER_MOTION_MASK)
+                                    | gtk.gdk.POINTER_MOTION_MASK
+                                    | gtk.gdk.KEY_PRESS_MASK)
         self.widget_tree.connect("button-press-event",
                                  self.on_button_press_event)
         self.widget_tree.connect("button-release-event",
                                  self.on_button_release_event)
         self.widget_tree.connect("motion-notify-event",
                                  self.on_motion_notify_event)
+        self.widget_tree.connect("key-press-event",
+                                 self.on_key_press_event)
         self._active_item = None
 
     def freeze(self):
@@ -443,7 +453,7 @@ class EbookListWidget(object):
         run_later_in_gui_thread(500,
                                 self.widget_tree.columns_autosize)
 
-    def on_filter_changed(self, w):
+    def _do_search(self, text, now=False):
         def do_refilter():
             if len(''.join(self.filter_text)) <= 2:
                 self.filter = None
@@ -459,11 +469,34 @@ class EbookListWidget(object):
                 self.filter.refilter()
                 if self.widget_tree.get_model() is not self.filtered_store:
                     self.widget_tree.set_model(self.filtered_store)
-        
-        self.filter_text = self.filter_entry.get_text().lower().strip().split()
-        
+
+        self.filter_text = text.lower().strip().split()
+
         delay = 1000 if MAEMO else 500
+        if now:
+            delay = 0
         self.filter_runner.run_later_in_gui_thread(delay, do_refilter)
+
+    def on_filter_changed(self, w):
+        self._do_search(self.filter_entry.get_text())
+
+    def on_search_history_append(self, w):
+        self._do_search(self.search.get_property('prefix'), now=True)
+
+    def on_search_close(self, w):
+        self._do_search('')
+        self.search.hide()
+        self.widget_tree.grab_focus()
+
+    def on_key_press_event(self, w, event):
+        if MAEMO:
+            if not self.search.get_property('visible'):
+                self.search_history.insert(0, (event.string,))
+                self.search.set_active(0)
+                self.search.show()
+                if self.filter_entry is not None:
+                    self.filter_entry.grab_focus()
+                    self.filter_entry.set_position(-1)
 
     def filter_func(self, model, it, data=None):
         if not self.filter_text: return True
@@ -481,11 +514,27 @@ class EbookListWidget(object):
         self.widget = box
 
         # Filter entry
-        hbox = gtk.HBox()
-        hbox.pack_start(gtk.Label(_("Search:")), fill=False, expand=False)
-        self.filter_entry = gtk.Entry()
-        hbox.pack_start(self.filter_entry, fill=True, expand=True)
-        box.pack_end(hbox, fill=True, expand=False)
+        if MAEMO:
+            self.search_history = gtk.ListStore(str)
+            self.search = hildon.FindToolbar(_("Search:"),
+                                             self.search_history, 0)
+            self.search.set_properties(
+                max_characters=512,
+                history_limit=5)
+            try:
+                # XXX: ugly
+                self.filter_entry = self.search.get_children()[1].get_children()[0].get_children()[0].get_children()[0]
+            except IndexError:
+                self.filter_entry = None
+            self.search.hide()
+            box.pack_end(self.search, fill=True, expand=False)
+        else:
+            self.search = None
+            hbox = gtk.HBox()
+            hbox.pack_start(gtk.Label(_("Search:")), fill=False, expand=False)
+            self.filter_entry = gtk.Entry()
+            hbox.pack_start(self.filter_entry, fill=True, expand=True)
+            box.pack_end(hbox, fill=True, expand=False)
 
         # Tree
         if MAEMO:
