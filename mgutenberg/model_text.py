@@ -5,6 +5,7 @@ Ebook text
 from ui import gtk
 import pango
 
+import sys
 import os
 import gzip
 import bz2
@@ -16,6 +17,7 @@ from StringIO import StringIO
 from HTMLParser import HTMLParser
 import htmlentitydefs
 
+import xml.etree.ElementTree as etree
 import plucker
 
 class UnsupportedFormat(IOError):
@@ -27,6 +29,11 @@ class EbookText(gtk.TextBuffer):
 
         self._text = None
         self._error = None
+
+        self.tag_bold = self.create_tag("bold", weight=pango.WEIGHT_BOLD)
+        self.tag_emph = self.create_tag("emph", style=pango.STYLE_ITALIC)
+        self.tag_big = self.create_tag("big", scale=1.5)
+
         self._load(filename)
 
         if self._text:
@@ -84,6 +91,8 @@ class EbookText(gtk.TextBuffer):
             self._load_plain_text(f)
         elif ext in ('.pdb'):
             self._load_plucker(f)
+        elif ext in ('.fb2'):
+            self._load_fb2(f)
         else:
             raise UnsupportedFormat("Don't know how to open this type of files")
 
@@ -92,10 +101,6 @@ class EbookText(gtk.TextBuffer):
             raw_text = str
         else:
             raw_text = f.read()
-
-        tag_bold = self.create_tag("bold", weight=pango.WEIGHT_BOLD)
-        tag_emph = self.create_tag("emph", style=pango.STYLE_ITALIC)
-        tag_big = self.create_tag("big", scale=1.5)
 
         parent = self
 
@@ -111,7 +116,7 @@ class EbookText(gtk.TextBuffer):
                 self.flush()
                 if tag in ('h1', 'h2', 'h3', 'h4'):
                     self._append(u'\n\n')
-                    self.tags.append(tag_big)
+                    self.tags.append(self.tag_big)
                 elif tag == 'p' or tag == 'br' or tag == 'div':
                     self.tags = []
                     self._append(u'\n')
@@ -123,9 +128,9 @@ class EbookText(gtk.TextBuffer):
                 elif tag == 'td':
                     self._append(u'\t')
                 elif tag == 'i' or tag == 'em':
-                    self.tags.append(tag_emph)
+                    self.tags.append(self.tag_emph)
                 elif tag == 'b' or tag == 'strong' or tag == 'bold':
-                    self.tags.append(tag_bold)
+                    self.tags.append(self.tag_bold)
                 elif tag == 'hr':
                     self._append(u'\n')
                 elif tag == 'body':
@@ -209,10 +214,6 @@ class EbookText(gtk.TextBuffer):
         html.flush()
 
     def _load_plucker(self, f):
-        tag_bold = self.create_tag("bold", weight=pango.WEIGHT_BOLD)
-        tag_emph = self.create_tag("emph", style=pango.STYLE_ITALIC)
-        tag_big = self.create_tag("big", scale=1.5)
-
         def set_tag(tag, flag):
             if tag in tags:
                 if not flag:
@@ -250,15 +251,72 @@ class EbookText(gtk.TextBuffer):
                 new_line = True
             elif cmd == 'em':
                 flush_text()
-                set_tag(tag_emph, data)
+                set_tag(self.tag_emph, data)
             elif cmd == 'font':
                 flush_text()
                 if data == 'b':
-                    set_tag(tag_bold, True)
+                    set_tag(self.tag_bold, True)
                 elif data in ('h1','h2','h3','h4'):
-                    set_tag(tag_big, True)
+                    set_tag(self.tag_big, True)
                 else:
                     del tags[:]
+
+    def _load_fb2(self, f):
+        def set_tag(tag, flag):
+            if tag in tags:
+                if not flag:
+                    tags.remove(tag)
+            else:
+                if flag:
+                    tags.append(tag)
+
+        def flush_text():
+            if not text:
+                return
+            self.insert_with_tags(self.get_end_iter(),
+                                  u"".join(text).encode('utf-8'),
+                                  *tags)
+            del text[:]
+
+        NS = "{http://www.gribuser.ru/xml/fictionbook/2.0}"
+
+        tags = []
+        text = []
+        for event, elem in etree.iterparse(f, ['start', 'end']):
+            el_tag = elem.tag
+            if el_tag.startswith(NS):
+                el_tag = el_tag[len(NS):]
+
+            if el_tag == 'p' and event == 'start':
+                flush_text()
+                text.append(u"\n")
+                if elem.text:
+                    text.append(elem.text.lstrip())
+            elif el_tag in ('emphasis', 'strong', 'style', 'a'):
+                tag = {'emphasis': self.tag_emph,
+                       'strong': self.tag_bold}.get(el_tag, None)
+                if event == 'start':
+                    # XXX: Links are just ignored
+                    flush_text()
+                    if tag:
+                        tags.append(tag)
+                else:
+                    if elem.text:
+                        text.append(elem.text)
+                    flush_text()
+                    if elem.tail:
+                        text.append(elem.tail)
+                    if tag and tag in tags:
+                        tags.remove(tag)
+            elif el_tag == 'title':
+                if event == 'start':
+                    flush_text()
+                    tags.append(self.tag_big)
+                else:
+                    flush_text()
+                    if self.tag_big in tags:
+                        tags.remove(self.tag_big)
+        flush_text()
 
     def _load_plain_text(self, f):
         if isinstance(f, str):
@@ -314,6 +372,7 @@ if __name__ == "__main__":
     import cProfile as profile
     import time
     start = time.time()
-    txt = EbookText('test.pdb')
+    #txt = EbookText('test.pdb')
+    txt = EbookText('test.fb2')
     print time.time() - start
-
+    print txt
