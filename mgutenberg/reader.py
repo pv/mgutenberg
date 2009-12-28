@@ -7,7 +7,7 @@ import time
 import math
 
 from ui import *
-from model_text import EbookText
+from model_text import EbookText, UnsupportedFormat
 
 class ReaderWindow(object):
     def __init__(self, app, textbuffer, filename):
@@ -249,7 +249,11 @@ def run(app, filename):
         notify_cb()
         error = None
 
-        if isinstance(textbuffer, Exception):
+        if isinstance(textbuffer, UnsupportedFormat):
+            error = run_fbreader(filename)
+            if error is None:
+                return
+        elif isinstance(textbuffer, Exception):
             error = str(textbuffer)
         elif textbuffer.error:
             error = textbuffer.error
@@ -269,3 +273,21 @@ def run(app, filename):
             app.readers.append(reader)
 
     run_in_background(EbookText, filename, callback=load_buffer_cb)
+
+@assert_gui_thread
+def run_fbreader(filename):
+    pid = os.spawnvp(os.P_NOWAIT, 'fbreader', ['fbreader', filename])
+
+    # catch immediate errors
+    time.sleep(0.25)
+    try:
+        pid, ret = os.waitpid(pid, os.WNOHANG)
+    except OSError:
+        return _("Unknown file format (FBReader apparently not installed)")
+
+    if pid == 0:
+        # child still running
+        return None
+    elif (ret >> 8) != 0:
+        # exited, with error
+        return _("Unknown file format (launching FBReader failed)")

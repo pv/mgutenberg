@@ -18,6 +18,9 @@ import htmlentitydefs
 
 import plucker
 
+class UnsupportedFormat(IOError):
+    pass
+
 class EbookText(gtk.TextBuffer):
     def __init__(self, filename):
         gtk.TextBuffer.__init__(self)
@@ -71,7 +74,7 @@ class EbookText(gtk.TextBuffer):
         for name in names:
             if name.endswith('.txt'):
                 return name
-        raise IOError("Zip file does not appear to contain text material")
+        raise UnsupportedFormat("Zip file does not appear to contain text")
 
     def _load_stream(self, filename, f):
         basefn, ext = os.path.splitext(filename)
@@ -82,7 +85,7 @@ class EbookText(gtk.TextBuffer):
         elif ext in ('.pdb'):
             self._load_plucker(f)
         else:
-            raise IOError("Don't know how to open this type of files")
+            raise UnsupportedFormat("Don't know how to open this type of files")
 
     def _load_html(self, f):
         if isinstance(f, str):
