@@ -42,7 +42,7 @@ def main():
 
     # Run
     app = MGutenbergApp(config)
-    app.run()
+    app.run(args)
 
 
 # XXX: revise those deeply nested callbacks; try to reduce nesting of code
@@ -92,7 +92,13 @@ class MGutenbergApp(AppBase):
     def start_reader(self, filename):
         reader.run(self, filename)
 
-    def run(self):
+    def run(self, args):
+        if args:
+            def start_readers():
+                for fn in args:
+                    self.start_reader(fn)
+            run_in_gui_thread(start_readers)
+
         self.window.show_all()
 
         # Refresh ebook list
