@@ -8,7 +8,7 @@ import guithread
 from guithread import *
 
 __all__ = ['gtk', 'gobject', 'MAEMO', 'Window', 'StackableWindow',
-           'TextView', 'AppBase', 'FileChooserDialog', '_',
+           'TextView', 'AppBase', 'FileChooserDialog', 'Entry', '_',
            'confirm_dialog', 'info_dialog']
 
 try:
@@ -19,7 +19,11 @@ try:
     StackableWindow = hildon.StackableWindow
     TextView = hildon.TextView
     FileChooserDialog = hildon.FileChooserDialog
+    Entry = hildon.Entry
     __all__.append('hildon')
+
+    def Entry(size="auto", *a, **kw):
+        return hildon.Entry(size, *a, **kw)
 
     def _message_dialog(type, parent, text="", secondary_text=""):
         if secondary_text:
@@ -32,6 +36,7 @@ except ImportError:
     Window = gtk.Window
     StackableWindow = gtk.Window
     TextView = gtk.TextView
+    Entry = gtk.Entry
     FileChooserDialog = gtk.FileChooserDialog
 
     def _message_dialog(type, parent, text="", secondary_text=""):

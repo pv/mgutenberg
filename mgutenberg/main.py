@@ -652,9 +652,9 @@ class GutenbergSearchWidget(object):
         box.set_spacing(5)
         self.widget = box
 
-        self.search_title = gtk.Entry()
-        self.search_author = gtk.Entry()
-        self.search_subject = gtk.Entry()
+        self.search_title = Entry()
+        self.search_author = Entry()
+        self.search_subject = Entry()
         self.search_button = gtk.Button(_("Search"))
 
         self.search_title.set_activates_default(True)
@@ -662,37 +662,66 @@ class GutenbergSearchWidget(object):
         self.search_subject.set_activates_default(True)
         self.search_button.set_flags(gtk.CAN_DEFAULT)
 
-        tbl = gtk.Table(rows=3, columns=2)
-
         entries = [(_("Author:"), self.search_author),
                    (_("Title:"), self.search_title),
                    (_("Subject:"), self.search_subject),
                    ]
-        for j, (a, b) in enumerate(entries):
-            lbl = gtk.Label(a)
-            lbl.set_alignment(0., 0.5)
-            tbl.attach(lbl, 0, 1, j, j+1, xoptions=gtk.FILL)
-            tbl.attach(b, 1, 2, j, j+1, xoptions=gtk.FILL|gtk.EXPAND)
 
         if MAEMO:
-            scroll = hildon.PannableArea()
-            scroll.set_properties(
-                mov_mode=hildon.MOVEMENT_MODE_BOTH
-                )
+            tbl = gtk.VBox()
+            sz = gtk.SizeGroup(gtk.SIZE_GROUP_BOTH)
+            for a, b in entries:
+                cap = hildon.Caption(sz, a, b)
+                tbl.pack_start(cap, fill=True, expand=False)
         else:
-            scroll = gtk.ScrolledWindow()
-            scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_ALWAYS)
-
-        hbox = gtk.HBox()
-        hbox.pack_start(tbl, fill=True, expand=True)
-        hbox.pack_start(self.search_button, fill=False, expand=False)
-        box.pack_start(hbox, fill=False, expand=False)
-        box.pack_start(scroll, fill=True, expand=True)
+            tbl = gtk.Table(rows=3, columns=2)
+            for j, (a, b) in enumerate(entries):
+                lbl = gtk.Label(a)
+                lbl.set_alignment(0., 0.5)
+                tbl.attach(lbl, 0, 1, j, j+1, xoptions=gtk.FILL)
+                tbl.attach(b, 1, 2, j, j+1, xoptions=gtk.FILL|gtk.EXPAND)
 
         self.widget_tree = gtk.TreeView(self.results)
         self.widget_tree.set_enable_search(True)
 
-        scroll.add(self.widget_tree)
+        hbox = gtk.HBox()
+
+        if MAEMO:
+            hbox.pack_start(tbl, fill=True, expand=False)
+            hbox.pack_start(self.search_button, fill=True, expand=False)
+
+            tbl.set_properties(
+                width_request=650)
+
+            port = gtk.Viewport()
+
+            scroll = hildon.PannableArea()
+            scroll.set_properties(
+                mov_mode=hildon.MOVEMENT_MODE_BOTH
+                )
+            scroll.add(port)
+
+            box = gtk.VBox()
+            port.add(box)
+
+            box.pack_start(hbox, fill=True, expand=False)
+            box.pack_start(self.widget_tree, fill=True, expand=True)
+
+            gtk.rc_parse_string('widget "*.mgutenbrowse-touchlist" '
+                                'style "fremantle-touchlist"')
+            self.widget_tree.set_name('GtkTreeView.mgutenbrowse-touchlist')
+
+            self.widget = scroll
+        else:
+            hbox.pack_start(tbl, fill=True, expand=True)
+            hbox.pack_start(self.search_button, fill=False, expand=False)
+
+            scroll = gtk.ScrolledWindow()
+            scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_ALWAYS)
+            scroll.add(self.widget_tree)
+
+            box.pack_start(hbox, fill=False, expand=False)
+            box.pack_start(scroll, fill=True, expand=True)
 
         author_cell = gtk.CellRendererText()
         author_col = gtk.TreeViewColumn(_('Author'), author_cell, text=0)
