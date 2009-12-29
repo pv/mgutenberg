@@ -133,7 +133,7 @@ class EbookList(gtk.ListStore):
                         m = reg.match(base)
                         if m:
                             g = m.groupdict()
-                            entry = (g.get('auth', author_name),
+                            entry = (reformat_auth(g.get('auth', author_name)),
                                      g.get('titl', base),
                                      g.get('lang', ''),
                                      full_path)
@@ -141,6 +141,9 @@ class EbookList(gtk.ListStore):
                     if entry is None:
                         entry = (author_name, base, "", full_path)
                     files.append(entry)
+
+        def reformat_auth(auth):
+            return auth.replace("; ", "\n")
 
         def really_add(r):
             for x in r:
@@ -237,12 +240,15 @@ class GutenbergSearchList(gtk.ListStore):
             self.add(_('(More...)'), '', '', '', NEXT_ID, '')
 
     def _format_title(self, title):
-        parts = title.split(u"\n")
-        if parts[0].startswith(u"The "):
-            parts[0] = parts[0][4:] + u", The"
-        return ellipsize(u"\n".join(parts).strip(), max_length=80)
+        """
+        Reformat title, by shuffling articles to the end
+        """
+        return ellipsize(transpose_articles(title), max_length=80)
 
     def _format_authors(self, author_list):
+        """
+        Reformat author list, by keeping 'main' authors only
+        """
         authors = []
         author_other = []
         for name, real_name, date, role in author_list:
@@ -286,6 +292,24 @@ class GutenbergSearchList(gtk.ListStore):
                           callback=on_finish)
         
         return info
+
+def transpose_articles(text):
+    """
+    Move articles 'The', 'A', and 'An' to the end.
+    """
+    parts = text.split(u"\n")
+    for article in (u"The", u"A", u"An"):
+        pre = article + u" "
+        if parts[0].startswith(pre):
+            m = re.match(u"^([^,\u2012-\u2015-]+)(.*?)$", parts[0][len(pre):])
+            if m:
+                m2 = re.match(ur"^(.*?)(\s*)$", m.group(1))
+                if m2:
+                    p = m2.group(1) + u", " + article + m2.group(2) + m.group(2)
+                else:
+                    p = m.group(1) + u", " + article + m.group(2)
+                parts[0] = p.strip()
+    return u"\n".join(parts).strip()
 
 def ellipsize(text, max_length=80):
     pieces = text.split(" ")
