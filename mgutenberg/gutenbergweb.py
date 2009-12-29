@@ -87,6 +87,7 @@ def _fetch_page(url):
 
 def _strip_tags(snippet):
     snippet = snippet.replace("&nbsp;", " ")
+    snippet = snippet.replace("&quot;", "\"")
     snippet = snippet.replace("\r", " ")
     snippet = snippet.replace("\n", " ")
     snippet = snippet.replace("<br>", "\n")
