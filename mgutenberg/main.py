@@ -884,7 +884,7 @@ class GutenbergDownloadWindow(object):
                     dlg = gtk.MessageDialog(self.app.window.widget)
                     dlg.set_markup("<b>%s</b>" % _("Download finished"))
                     dlg.format_secondary_text(
-                        _("Ebook %s by %s is now downloaded. Do "
+                        _("Ebook \"%s\" by %s is now downloaded. Do "
                           "you want to read it?") % (self.info.title,
                                                      self.info.author))
                     dlg.add_button(_("Read it"), 1)
@@ -901,18 +901,17 @@ class GutenbergDownloadWindow(object):
                                    self.app.config['save_dir'],
                                    overwrite=overwrite,
                                    callback=lambda x: done_cb(x, notify_cb))
-                # XXX: Download notify doesn't work on Maemo??
-                notify_cb = self.app.show_notify(self.widget,
+                notify_cb = self.app.show_notify(self.app.window.widget,
                                                  _("Downloading..."))
                 self.widget.destroy()
-                                
+
             try:
                 proceed(sel)
             except OverwriteFileException:
                 dlg = gtk.MessageDialog(self.app.window.widget)
                 dlg.set_markup("<b>%s</b>" % _("Overwrite file?"))
                 dlg.format_secondary_text(
-                    _("Ebook %s by %s appears already to be on your disk. "
+                    _("Ebook \"%s\" by %s appears already to be on your disk. "
                       "Do you want to overwrite it with a version from "
                       "Project Gutenberg?") % (self.info.title,
                                                self.info.author))
@@ -950,9 +949,13 @@ class GutenbergDownloadWindow(object):
         # Info box
         tbl = gtk.Table(rows=4, columns=2)
 
+        author_info = self.info.author.replace(u"\n", u"; ")
+        if self.info.author_other:
+            author_info += u"\n" + self.info.author_other.replace(u"; ", u"\n")
+
         infoentries = [
             (_("Etext:"), str(self.info.etext_id)),
-            (_("Author:"), self.info.author),
+            (_("Author:"), author_info),
             (_("Language:"), self.info.language),
         ]
 
