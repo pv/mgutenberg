@@ -116,7 +116,7 @@ class EbookText(gtk.TextBuffer):
                 self.flush()
                 if tag in ('h1', 'h2', 'h3', 'h4'):
                     self._append(u'\n\n')
-                    self.tags.append(self.tag_big)
+                    self.tags.append(parent.tag_big)
                 elif tag == 'p' or tag == 'br' or tag == 'div':
                     self.tags = []
                     self._append(u'\n')
@@ -128,9 +128,9 @@ class EbookText(gtk.TextBuffer):
                 elif tag == 'td':
                     self._append(u'\t')
                 elif tag == 'i' or tag == 'em':
-                    self.tags.append(self.tag_emph)
+                    self.tags.append(parent.tag_emph)
                 elif tag == 'b' or tag == 'strong' or tag == 'bold':
-                    self.tags.append(self.tag_bold)
+                    self.tags.append(parent.tag_bold)
                 elif tag == 'hr':
                     self._append(u'\n')
                 elif tag == 'body':
