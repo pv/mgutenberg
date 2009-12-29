@@ -493,7 +493,7 @@ class EbookListWidget(object):
                     model.delete_file(it)
                 dlg.destroy()
             dlg = confirm_dialog(parent=self.app.window.widget,
-                                 text="Delete file?",
+                                 text=_("Delete file?"),
                                  secondary_text=os.path.basename(entry[3]))
             dlg.connect("response", response)
             dlg.show()
@@ -501,12 +501,47 @@ class EbookListWidget(object):
             pass
 
     def delete_rows(self, rows):
-        model = self.widget_tree.get_model()
+        dlg = confirm_dialog(parent=self.app.window.widget,
+                             text=_("Delete files?"))
         try:
-            print "XXX: to delete rows", rows
-            # XXX: continue writing here
-        except ValueError:
-            pass
+            box = dlg.get_content_area()
+        except AttributeError:
+            box = dlg.get_children()[0].get_children()[0].get_children()[0]
+
+        def to_show(model, it):
+            return model.get_path(it) in rows
+        def reformat(model, it, column):
+            it = model.convert_iter_to_child_iter(it)
+            v = self.store.get_value(it, column)
+            return os.path.basename(str(v))
+
+        filtered = self.store.filter_new()
+        filtered.set_visible_func(to_show)
+        filtered.set_modify_func([str,str,str,str], reformat)
+        scroll = hildon.PannableArea()
+        cell = gtk.CellRendererText()
+        col = gtk.TreeViewColumn(_("File"), cell, text=3)
+        lst = gtk.TreeView(filtered)
+        lst.append_column(col)
+        scroll.set_properties(
+            height_request=200)
+        scroll.add(lst)
+        box.pack_start(scroll, expand=True, fill=True)
+        lst.show()
+        scroll.show()
+        box.show()
+
+        def response(widget, response_id):
+            if response_id == gtk.RESPONSE_OK:
+                rows_sorted = [r[0] for r in rows]
+                rows_sorted.sort(key=lambda x: -x)
+                for row in rows_sorted:
+                    it = self.store.get_iter((row,))
+                    self.store.delete_file(it)
+            dlg.destroy()
+
+        dlg.connect("response", response)
+        dlg.show()
 
     def on_activated(self, treeview, path, column):
         entry = treeview.get_model()[path]
