@@ -612,20 +612,22 @@ class GutenbergSearchWidget(object):
 
     def on_activated(self, tree, it, column):
         entry = self.results[it]
-        pos = None
+        pos = [0]
+
+        def pre_cb():
+            pos[0] = self.widget_tree.get_vadjustment().get_value()
 
         def done_cb(r):
             notify_cb()
             if pos is not None:
-                self.widget_tree.get_vadjustment().set_value(pos)
+                self.widget_tree.get_vadjustment().set_value(pos[0])
             if isinstance(r, Exception):
                 self.app.error_message(_("Error in fetching search results"),
                                        r)
 
         if entry[4] == NEXT_ID:
             notify_cb = self.app.show_notify(self.widget, _("Searching..."))
-            pos = self.widget_tree.get_vadjustment().get_value()
-            self.results.next_page(callback=done_cb)
+            self.results.next_page(callback=done_cb, pre_callback=pre_cb)
             return
         else:
             notify_cb = self.app.show_notify(self.widget,

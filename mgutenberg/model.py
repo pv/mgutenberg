@@ -177,7 +177,8 @@ class GutenbergSearchList(gtk.ListStore):
         return self.append((author, title, language, category, etext_id,
                             author_other))
 
-    def new_search(self, author="", title="", subject="", callback=None):
+    def new_search(self, author="", title="", subject="", callback=None,
+                   pre_callback=None):
         self.pages = []
         self.pageno = 0
         self.last_search = dict(author=author, title=title, subject=subject)
@@ -186,6 +187,8 @@ class GutenbergSearchList(gtk.ListStore):
             if isinstance(r, Exception):
                 callback(r)
                 return
+            if pre_callback:
+                pre_callback()
             self._repopulate(r)
             if callback:
                 callback(True)
@@ -194,13 +197,15 @@ class GutenbergSearchList(gtk.ListStore):
                           author=author, title=title, subject=subject,
                           pageno=0, callback=on_finish)
 
-    def next_page(self, callback=None):
+    def next_page(self, callback=None, pre_callback=None):
         def on_finish(r):
             if isinstance(r, Exception):
                 callback(r)
                 return
             else:
                 self.pageno += 1
+            if pre_callback:
+                pre_callback()
             self._repopulate(r)
             if callback:
                 callback(True)
