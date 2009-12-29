@@ -320,7 +320,7 @@ class MainWindow(object):
         open_file_button.connect("clicked", self.on_open_file)
         menu.append(open_file_button)
 
-        help_button = gtk.Button(label=_("About"))
+        help_button = gtk.Button(label=_("Help"))
         help_button.connect("clicked", self.on_help)
         menu.append(help_button)
 
@@ -605,26 +605,27 @@ class GutenbergSearchWidget(object):
                                        r)
         notify_cb = self.app.show_notify(self.widget, _("Searching..."))
         self.results.new_search(
-            self.search_author.get_text(),
-            self.search_title.get_text(),
+            author=self.search_author.get_text(),
+            title=self.search_title.get_text(),
+            subject=self.search_subject.get_text(),
             callback=done_cb)
 
     def on_activated(self, tree, it, column):
         entry = self.results[it]
+        pos = None
 
         def done_cb(r):
             notify_cb()
+            if pos is not None:
+                self.widget_tree.get_vadjustment().set_value(pos)
             if isinstance(r, Exception):
                 self.app.error_message(_("Error in fetching search results"),
                                        r)
 
         if entry[4] == NEXT_ID:
             notify_cb = self.app.show_notify(self.widget, _("Searching..."))
+            pos = self.widget_tree.get_vadjustment().get_value()
             self.results.next_page(callback=done_cb)
-            return
-        elif entry[4] == PREV_ID:
-            notify_cb = self.app.show_notify(self.widget, _("Searching..."))
-            self.results.prev_page(callback=done_cb)
             return
         else:
             notify_cb = self.app.show_notify(self.widget,
@@ -650,23 +651,26 @@ class GutenbergSearchWidget(object):
 
         self.search_title = gtk.Entry()
         self.search_author = gtk.Entry()
+        self.search_subject = gtk.Entry()
         self.search_button = gtk.Button(_("Search"))
 
         self.search_title.set_activates_default(True)
         self.search_author.set_activates_default(True)
+        self.search_subject.set_activates_default(True)
         self.search_button.set_flags(gtk.CAN_DEFAULT)
 
         tbl = gtk.Table(rows=3, columns=2)
 
         entries = [(_("Author:"), self.search_author),
                    (_("Title:"), self.search_title),
+                   (_("Subject:"), self.search_subject),
                    ]
         for j, (a, b) in enumerate(entries):
             lbl = gtk.Label(a)
             lbl.set_alignment(0., 0.5)
             tbl.attach(lbl, 0, 1, j, j+1, xoptions=gtk.FILL)
             tbl.attach(b, 1, 2, j, j+1, xoptions=gtk.FILL|gtk.EXPAND)
-        
+
         if MAEMO:
             scroll = hildon.PannableArea()
             scroll.set_properties(
@@ -703,14 +707,20 @@ class GutenbergSearchWidget(object):
         lang_col.set_resizable(True)
 
         cat_cell = gtk.CellRendererText()
-        cat_col = gtk.TreeViewColumn(_('Category'), lang_cell, text=3)
+        cat_col = gtk.TreeViewColumn(_('Category'), cat_cell, text=3)
         cat_col.set_sort_column_id(3)
         cat_col.set_resizable(True)
 
+        other_cell = gtk.CellRendererText()
+        other_col = gtk.TreeViewColumn(_('Other info'), other_cell, text=5)
+        other_col.set_sort_column_id(4)
+        other_col.set_resizable(True)
+
         self.widget_tree.append_column(author_col)
+        self.widget_tree.append_column(cat_col)
         self.widget_tree.append_column(title_col)
         self.widget_tree.append_column(lang_col)
-        self.widget_tree.append_column(cat_col)
+        self.widget_tree.append_column(other_col)
 
 class GutenbergDownloadWindow(object):
     def __init__(self, app, info):

@@ -158,99 +158,102 @@ class EbookList(gtk.ListStore):
         start_thread(do_walk_tree, self.search_dirs)
 
 NEXT_ID = -10
-PREV_ID = -20
 
 class GutenbergSearchList(gtk.ListStore):
     """
     List of search results:
 
-        [(author, title, language, category, etext_id), ...]
+        [(author, title, language, category, etext_id, author_other), ...]
     """
-    
+
     def __init__(self):
-        gtk.ListStore.__init__(self, str, str, str, str, int)
+        gtk.ListStore.__init__(self, str, str, str, str, int, str)
+        self.pages = []
         self.pageno = 0
-        self.max_pageno = None
         self.last_search = None
-        self.last_result = None
-        
+
     def add(self, author=u"", title=u"", language=u"",
-            category=u"", etext_id=-1):
-        return self.append((author, title, language, category, etext_id))
-        
-    def new_search(self, author="", title="", callback=None):
-        self.last_search = (author, title)
+            category=u"", etext_id=-1, author_other=u""):
+        return self.append((author, title, language, category, etext_id,
+                            author_other))
+
+    def new_search(self, author="", title="", subject="", callback=None):
+        self.pages = []
         self.pageno = 0
-        self.max_pageno = None
+        self.last_search = dict(author=author, title=title, subject=subject)
 
         def on_finish(r):
             if isinstance(r, Exception):
                 callback(r)
                 return
-            if not r:
-                self.max_pageno = 0
             self._repopulate(r)
             if callback:
                 callback(True)
 
-        run_in_background(gutenbergweb.search, author, title, pageno=0,
-                          callback=on_finish)
+        run_in_background(gutenbergweb.search,
+                          author=author, title=title, subject=subject,
+                          pageno=0, callback=on_finish)
 
     def next_page(self, callback=None):
-        if self.max_pageno is not None and self.pageno >= self.max_pageno:
-            return # nothing to do
-        
         def on_finish(r):
             if isinstance(r, Exception):
                 callback(r)
                 return
-            if not r:
-                self.max_pageno = self.pageno
-                r = self.last_result # remove the dummy navigation entry
             else:
                 self.pageno += 1
             self._repopulate(r)
             if callback:
                 callback(True)
 
-        run_in_background(gutenbergweb.search, self.last_search[0],
-                          self.last_search[1], pageno=self.pageno + 1,
-                          callback=on_finish)
-        
-    def prev_page(self, callback=None):
-        if self.pageno > 0:
-            self.pageno -= 1
-        else:
-            return
-        
-        def on_finish(r):
-            if isinstance(r, Exception):
-                callback(r)
-                return
-            self.pageno -= 1
-            self._repopulate(r)
-            if callback:
-                callback(True)
-        
-        run_in_background(gutenbergweb.search, self.last_search[0],
-                          self.last_search[1], pageno=self.pageno - 1,
-                          callback=on_finish)
-    
-    def _repopulate(self, r):
-        self.last_result = r
-        self.clear()
-        
-        if self.pageno > 0:
-            self.add(_('(Previous...)'), '', '', '', PREV_ID)
+        run_in_background(gutenbergweb.search, pageno=self.pageno + 1,
+                          callback=on_finish, **self.last_search)
 
-        for x in r:
-            self.add(x[1], x[2], x[3], x[4], x[0])
-            
-        if self.max_pageno is None or self.pageno < self.max_pageno:
-            self.add(_('(Next...)'), '', '', '', NEXT_ID)
-        
+    def _repopulate(self, result):
+        self.clear()
+
+        if result:
+            if self.pageno >= len(self.pages):
+                self.pages.extend([None] * (self.pageno+1-len(self.pages)))
+            self.pages[self.pageno] = result
+
+        for r in self.pages:
+            if not r:
+                continue
+            for x in r:
+                author, author_other = self._format_authors(x[1])
+                if x[4].lower().strip() == 'audio book':
+                    # XXX: Don't show audio books since we don't handle them
+                    #      in a reasonable way yet...
+                    continue
+                self.add(author, ellipsize(x[2]), x[3], x[4], x[0],
+                         author_other)
+
+        if result:
+            self.add(_('(More...)'), '', '', '', NEXT_ID, '')
+
+    def _format_authors(self, author_list):
+        authors = []
+        author_other = []
+        for name, real_name, date, role in author_list:
+            if role == 'author':
+                authors.append(name)
+                s = u""
+            else:
+                s = name
+            if real_name:
+                s += " (%s)" % real_name
+            if date:
+                s += " " + date
+            if role and s:
+                s += " [%s]" % role
+            author_other.append(s.lstrip())
+        return u"\n".join(authors), ellipsize(u"; ".join(author_other),
+                                              max_length=160)
+
     def get_downloads(self, it, callback=None):
-        author, title, language, category, etext_id = self[it]
+        author, title, language, category, etext_id, author_other = self[it]
+        if author_other:
+            author += u"\n" + author_other
         info = DownloadInfo(author, title, language, category, etext_id)
 
         def on_finish(result):
@@ -270,6 +273,18 @@ class GutenbergSearchList(gtk.ListStore):
                           callback=on_finish)
         
         return info
+
+def ellipsize(text, max_length=80):
+    pieces = text.split(" ")
+    size = -1
+    for k, piece in enumerate(pieces):
+        if size + 1 + len(piece) + 4 > max_length:
+            if size > 0:
+                return u" ".join(pieces[:k]) + u" ..."
+            else:
+                return pieces[0][:125] + u"..."
+        size += len(piece) + 1
+    return u" ".join(pieces)
 
 class DownloadInfo(gtk.ListStore):
     """

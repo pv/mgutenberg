@@ -40,3 +40,17 @@ def test_info():
     assert any(enc == 'us-ascii' for url,fmt,enc,comp in r), r
     assert any(comp == '' for url,fmt,enc,comp in r), r
     assert 'audio book' in infodict['category'].lower()
+
+def test_authors():
+    text = u"Cobb, Irvin S. (Irvin Shrewsbury), Sir, 1976- [Author]\nSarg, Tony, 1880-1942 [Illustrator]"
+    authors = gutenbergweb._parse_gutenberg_authors(text)
+    assert authors == [(u'Cobb, Irvin S.', u'Irvin Shrewsbury, Sir',
+                        u'1976-', u'author'),
+                       (u'Sarg, Tony', '', u'1880-1942', u'illustrator')], \
+                       authors
+
+    text = u"Cobb, Irvin S., -1944 [Author]\nSarg, Tony [Illustrator]"
+    authors = gutenbergweb._parse_gutenberg_authors(text)
+    assert authors == [(u'Cobb, Irvin S.', u'', u'-1944', u'author'),
+                       (u'Sarg, Tony', '', u'', u'illustrator')], \
+                       authors

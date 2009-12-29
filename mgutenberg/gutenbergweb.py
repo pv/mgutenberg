@@ -8,8 +8,10 @@ Routines
 
 - search(author, title, etextnr)
 
-  Returns [(etext_id, authors, title, language), ...]
-  
+  Returns [(etext_id, authors, title, language, category), ...]
+
+          authors = [(name, real_name, date, role), ...]
+
 - etext_info(etext_id)
 
   Returns [(url, format, encoding, compression), ...]
@@ -25,12 +27,14 @@ from util import *
 
 class SearchFailure(RuntimeError): pass
 
-def search(author=None, title=None, etextnr=None, pageno=0):
+def search(author=None, title=None, etextnr=None, subject=None, pageno=0):
     """
     Search for an etext in the Project Gutenberg catalog
 
     :Returns:
         [(etext_id, authors, title, language, category), ...]
+
+        authors = [(name, real_name, date, role), ...]
     """
     if not author:
         author = ''
@@ -39,9 +43,12 @@ def search(author=None, title=None, etextnr=None, pageno=0):
         title = ' '
     if not etextnr:
         etextnr = ''
-    
+    if not subject:
+        subject = ''
+
     data = _urllib.urlencode([('author', unicode(author)),
                               ('title', unicode(title)),
+                              ('subject', unicode(subject)),
                               ('etextnr', unicode(etextnr)),
                               ('pageno', unicode(pageno))])
     url = _SEARCH_URL + '?' + data
@@ -152,7 +159,7 @@ def _parse_gutenberg_search_html(html):
 
             entries.append((
                 etext,
-                unicode(_strip_tags(g.get('authors', '')), 'utf-8'),
+                _parse_gutenberg_authors(unicode(_strip_tags(g.get('authors', '')), 'utf-8')),
                 unicode(_strip_tags(g.get('title', '')), 'utf-8'),
                 unicode(_strip_tags(g.get('language', '')), 'utf-8'),
                 category,
@@ -238,3 +245,58 @@ def _parse_gutenberg_ebook_html(etext, html):
             break
 
     return entries, dict(category=category)
+
+#-- Author name lists
+
+def _parse_gutenberg_authors(aut):
+    authors = []
+
+    ss = aut.strip().split("\n")
+    for row in ss:
+        s = row.strip()
+        name = u''
+        real_name = u''
+        role = u''
+        date = u''
+        title = u''
+
+        # Role
+        m = _re.search(ur'\[(\w+)\]\s*$', s)
+        if m:
+            role = m.group(1).lower()
+            s = s[:m.start()]
+
+        # Date
+        for dt in (ur'(\d+\??-\d+\??)\s*$', ur'(\d+\??-)\s*$',
+                   ur'(-\d+\??)\s*$', ur'(\d+\??\s+BC-\d+\??\s+BC)',
+                   ur'(\d+\??\s+BC-)', ur'(-\d+\??\s+BC)',
+                   ):
+            m = _re.search(dt, s)
+            if m:
+                date = m.group(1)
+                s = s[:m.start()]
+                break
+
+        s = _re.sub(ur',\s*$', '', s)
+
+        # Title fragments
+        m = _re.search(ur'\)(,\s+[^\)]+)\s*$', s)
+        if m:
+            title = m.group(1)
+            s = s[:m.start()+1]
+
+        # Real name
+        m = _re.search(ur'\(([^\)]+)\)\s*$', s)
+        if m:
+            real_name = m.group(1).strip()
+            s = s[:m.start()]
+
+        # Name
+        name = s.strip()
+        if not name:
+            if row.strip():
+                authors.append((row.strip(), u'', u'', u''))
+        else:
+            authors.append((name, real_name+title, date, role))
+
+    return authors
