@@ -324,7 +324,7 @@ class MainWindow(object):
 
         def proceed(widget):
             model, rows = self.ebook_list.widget_tree.get_selection().get_selected_rows()
-            self.ebook_list.delete_rows(rows)
+            self.ebook_list.delete_rows(rows, model=model)
             cancel(widget)
 
         edit_bar.connect("button-clicked", proceed)
@@ -500,7 +500,14 @@ class EbookListWidget(object):
         except ValueError:
             pass
 
-    def delete_rows(self, rows):
+    def delete_rows(self, rows, model=None):
+        # De-filter the view
+        while model is not None and model is not self.store:
+            rows = [model.convert_path_to_child_path(r) for r in rows]
+            model = model.get_model()
+        if model != self.store:
+            raise RuntimeError("Programming error -- please report")
+
         dlg = confirm_dialog(parent=self.app.window.widget,
                              text=_("Delete files?"))
         try:
