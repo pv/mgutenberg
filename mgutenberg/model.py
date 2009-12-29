@@ -231,7 +231,7 @@ class GutenbergSearchList(gtk.ListStore):
                     #      in a reasonable way yet...
                     continue
                 self.add(author, ellipsize(x[2]), x[3], x[4], x[0],
-                         author_other)
+                         ellipsize(author_other, max_length=320))
 
         if result:
             self.add(_('(More...)'), '', '', '', NEXT_ID, '')
@@ -258,7 +258,7 @@ class GutenbergSearchList(gtk.ListStore):
     def get_downloads(self, it, callback=None):
         author, title, language, category, etext_id, author_other = self[it]
         if author_other:
-            author += u"\n" + author_other
+            author += u"\n" + author_other.replace(u'; ', u'\n')
         info = DownloadInfo(author, title, language, category, etext_id)
 
         def on_finish(result):
