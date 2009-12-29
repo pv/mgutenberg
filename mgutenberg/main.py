@@ -484,7 +484,7 @@ class EbookListWidget(object):
         self._do_search(self.search.get_property('prefix'), now=True)
 
     def on_search_close(self, w):
-        self._do_search('')
+        self._do_search('', now=True)
         self.search.hide()
         self.widget_tree.grab_focus()
 
