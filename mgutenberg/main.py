@@ -600,6 +600,7 @@ class GutenbergSearchWidget(object):
     def on_search_clicked(self, btn):
         def done_cb(r):
             notify_cb()
+            self.widget_tree.columns_autosize()
             if isinstance(r, Exception):
                 self.app.error_message(_("Error in fetching search results"),
                                        r)
