@@ -137,6 +137,9 @@ class MainWindow(object):
         </ui>
         """]
 
+    LOCAL_PAGE = 0
+    GUTENBERG_PAGE = 1
+
     def __init__(self, app):
         self.app = app
 
@@ -260,12 +263,12 @@ class MainWindow(object):
     # -- Maemo-specific:
 
     def on_book_button_click(self, widget):
-        self.notebook.set_current_page(0)
-        self.on_notebook_switch_page(None, None, 0)
+        self.notebook.set_current_page(self.LOCAL_PAGE)
+        self.on_notebook_switch_page(None, None, self.LOCAL_PAGE)
 
     def on_gutenberg_button_click(self, widget):
-        self.notebook.set_current_page(1)
-        self.on_notebook_switch_page(None, None, 1)
+        self.notebook.set_current_page(self.GUTENBERG_PAGE)
+        self.on_notebook_switch_page(None, None, self.GUTENBERG_PAGE)
 
     def on_notebook_switch_page(self, notebook, page, page_num):
         self.app.config['ui_page'] = int(page_num)
@@ -275,8 +278,13 @@ class MainWindow(object):
             self.gutenberg_button.handler_block_by_func(
                 self.on_gutenberg_button_click)
 
-            self.book_button.set_active(page_num == 0)
-            self.gutenberg_button.set_active(page_num == 1)
+            self.book_button.set_active(page_num == self.LOCAL_PAGE)
+            self.gutenberg_button.set_active(page_num == self.GUTENBERG_PAGE)
+
+            if page_num == self.LOCAL_PAGE:
+                self.delete_file_button.show()
+            elif page_num == self.GUTENBERG_PAGE:
+                self.delete_file_button.hide()
 
             self.book_button.handler_unblock_by_func(self.on_book_button_click)
             self.gutenberg_button.handler_unblock_by_func(
@@ -295,6 +303,32 @@ class MainWindow(object):
 
         dlg.connect("response", response)
         dlg.show()
+
+    def on_delete_file(self, widget):
+        if self.notebook.get_current_page() != self.LOCAL_PAGE:
+            return
+
+        edit_bar = hildon.EditToolbar(_("Choose items to delete"), _("Delete"))
+        self.widget.set_edit_toolbar(edit_bar)
+        self.widget.set_modal(True)
+        self.widget.fullscreen()
+        edit_bar.show()
+
+        self.ebook_list.set_selection_mode(True)
+
+        def cancel(widget):
+            edit_bar.destroy()
+            self.widget.set_modal(False)
+            self.ebook_list.set_selection_mode(False)
+            self.widget.unfullscreen()
+
+        def proceed(widget):
+            model, rows = self.ebook_list.widget_tree.get_selection().get_selected_rows()
+            self.ebook_list.delete_rows(rows)
+            cancel(widget)
+
+        edit_bar.connect("button-clicked", proceed)
+        edit_bar.connect("arrow-clicked", cancel)
 
     def on_help(self, widget):
         filename = os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -323,6 +357,11 @@ class MainWindow(object):
         help_button = gtk.Button(label=_("Help"))
         help_button.connect("clicked", self.on_help)
         menu.append(help_button)
+
+        delete_file_button = gtk.Button(label=_("Delete"))
+        delete_file_button.connect("clicked", self.on_delete_file)
+        self.delete_file_button = delete_file_button
+        menu.append(delete_file_button)
 
         # Select buttons
         self.menu = menu
@@ -378,6 +417,22 @@ class EbookListWidget(object):
         
     def thaw(self):
         self.widget_tree.set_model(self.store)
+
+    def set_selection_mode(self, enabled):
+        if enabled:
+            hildon.hildon_gtk_tree_view_set_ui_mode(self.widget_tree, "edit")
+            self.widget_tree.get_selection().set_mode(gtk.SELECTION_MULTIPLE)
+            self.widget_tree.get_selection().unselect_all()
+
+            self.widget_tree.handler_block_by_func(self.on_button_press_event)
+            self.widget_tree.handler_block_by_func(self.on_button_release_event)
+            self.widget_tree.handler_block_by_func(self.on_motion_notify_event)
+        else:
+            hildon.hildon_gtk_tree_view_set_ui_mode(self.widget_tree, "normal")
+
+            self.widget_tree.handler_unblock_by_func(self.on_button_press_event)
+            self.widget_tree.handler_unblock_by_func(self.on_button_release_event)
+            self.widget_tree.handler_unblock_by_func(self.on_motion_notify_event)
 
     # ---
 
@@ -445,8 +500,16 @@ class EbookListWidget(object):
         except ValueError:
             pass
 
-    def on_activated(self, treeview, it, column):
-        entry = treeview.get_model()[it]
+    def delete_rows(self, rows):
+        model = self.widget_tree.get_model()
+        try:
+            print "XXX: to delete rows", rows
+            # XXX: continue writing here
+        except ValueError:
+            pass
+
+    def on_activated(self, treeview, path, column):
+        entry = treeview.get_model()[path]
         self.app.start_reader(entry[3])
 
     def on_map_event(self, widget, ev):
