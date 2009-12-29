@@ -230,11 +230,17 @@ class GutenbergSearchList(gtk.ListStore):
                     # XXX: Don't show audio books since we don't handle them
                     #      in a reasonable way yet...
                     continue
-                self.add(author, ellipsize(x[2]), x[3], x[4], x[0],
+                self.add(author, self._format_title(x[2]), x[3], x[4], x[0],
                          ellipsize(author_other, max_length=320))
 
         if result:
             self.add(_('(More...)'), '', '', '', NEXT_ID, '')
+
+    def _format_title(self, title):
+        parts = title.split(u"\n")
+        if parts[0].startswith(u"The "):
+            parts[0] = parts[0][4:] + u", The"
+        return ellipsize(u"\n".join(parts).strip(), max_length=80)
 
     def _format_authors(self, author_list):
         authors = []
@@ -242,6 +248,9 @@ class GutenbergSearchList(gtk.ListStore):
         for name, real_name, date, role in author_list:
             if role == 'author':
                 authors.append(name)
+                s = u""
+            elif role == 'translator' and len(author_list) == 2:
+                authors.append(u"tr. " + name)
                 s = u""
             else:
                 s = name
@@ -257,9 +266,8 @@ class GutenbergSearchList(gtk.ListStore):
 
     def get_downloads(self, it, callback=None):
         author, title, language, category, etext_id, author_other = self[it]
-        if author_other:
-            author += u"\n" + author_other.replace(u'; ', u'\n')
-        info = DownloadInfo(author, title, language, category, etext_id)
+        info = DownloadInfo(author, title, language, category, etext_id,
+                            author_other)
 
         def on_finish(result):
             if isinstance(result, Exception):
@@ -297,8 +305,10 @@ class DownloadInfo(gtk.ListStore):
 
         [(url, format info)]
     """
-    def __init__(self, author, title, language, category, etext_id):
+    def __init__(self, author, title, language, category, etext_id,
+                 author_other):
         self.author = author
+        self.author_other = author_other
         self.title = title
         self.language = language
         self.category = category
@@ -325,7 +335,12 @@ class DownloadInfo(gtk.ListStore):
         """
         url, format = self[it]
 
-        author = clean_filename(clean_author(self.author))
+        author = self.author.replace("\n", "; ")
+        author = clean_filename(author)
+
+        base_author = "; ".join([x for x in self.author.split("\n")
+                                 if not x.startswith('tr. ')])
+        base_author = clean_filename(base_author)
 
         url_base = url.split('/')[-1]
         try:
@@ -357,8 +372,8 @@ class DownloadInfo(gtk.ListStore):
         else:
             file_name = clean_filename(base_name)
 
-        if author:
-            path = os.path.join(base_directory, author, file_name)
+        if base_author:
+            path = os.path.join(base_directory, base_author, file_name)
         else:
             path = os.path.join(base_directory, file_name)
 
@@ -392,22 +407,6 @@ class DownloadInfo(gtk.ListStore):
                 callback(path)
         
         run_in_background(do_download, url, callback=on_finish)
-
-_AUTHOR_RES = [
-    re.compile(r"^(.*?),\s*\d.*$", re.S),
-    re.compile(r"^(.*?);.*$", re.S),
-    ]
-
-def clean_author(au):
-    """
-    Remove cruft from Project Gutenberg author strings
-    """
-    au = au.strip()
-    for r in _AUTHOR_RES:
-        m = r.match(au)
-        if m:
-            return m.group(1)
-    return au
 
 def clean_filename(s):
     """
