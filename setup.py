@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from setuptools import setup, find_packages
+from distutils.core import setup
 import subprocess, os
 
 mod = __import__('mgutenberg')
@@ -29,7 +29,7 @@ setup(
     author_email = "pav@iki.fi",
     license = "BSD, 3-clause",
     ##
-    packages = find_packages(),
+    packages = ['mgutenberg'],
     package_data={'mgutenberg': ['doc/*.html', 'doc/*.css', 'doc/*.png',
                                  'doc/*.gif']},
     scripts = ["mgutenberg/mgutenberg"],
