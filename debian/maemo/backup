@@ -1,5 +1,5 @@
 <backup-configuration>
   <locations>
-    <location type="file" category="settings">$HOME/.mgutenberg</location>
+    <location type="file" category="settings">$HOME/.mgutenbergrc</location>
   </locations>
 </backup-configuration>
