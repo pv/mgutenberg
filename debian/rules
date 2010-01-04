@@ -9,6 +9,7 @@ export DH_COMPAT=4
 PYTHON2.5 = /usr/bin/python2.5
 
 PKG=mgutenberg
+VER=$(shell head -n1 debian/changelog|perl -n -e 'print "$$1" if /([0-9.]+)/')
 
 build:
 	dh_testdir
@@ -17,6 +18,9 @@ clean:
 	dh_testdir
 	dh_testroot
 	dh_clean
+	rm -rf build dist *.egg-info
+	rm -f */*.pyc */*.pyo
+	rm -f debian/*.substvars debian/*.log
 
 install: build
 	dh_testdir
@@ -71,6 +75,16 @@ binary-arch: build install
 	maemo-optify $(PKG) debian/$(PKG)
 	dh_md5sums -a
 	dh_builddeb -a
+
+source: clean
+	dh_testdir
+	rm -rf dist
+	mkdir -p dist/$(PKG)-$(VER)
+	-cp -a * dist/$(PKG)-$(VER)
+	-cd dist/$(PKG)-$(VER) && dpkg-buildpackage -rfakeroot -sn -S -i -I.hg -k1E3C9230
+	rm -rf dist/$(PKG)-$(VER)
+	mv dist/* ..
+	rmdir dist
 
 binary: binary-indep binary-arch
 .PHONY: build clean binary-indep binary-arch binary install configure

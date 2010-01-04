@@ -1,13 +1,14 @@
 Source: mgutenberg
-Section: user/tools
 Priority: optional
 Maintainer: Pauli Virtanen <pav@iki.fi>
-Build-Depends: debhelper (>> 3.0.0), python2.5
-Standards-Version: 3.6.2
+Build-Depends: debhelper, python2.5, python-hildon
+Standards-Version: 3.6.1
 
 Package: mgutenberg
+Section: user/utilities
 Architecture: all
 Depends: python2.5, python-hildon
+Suggests: fbreader
 XB-Maemo-Icon-26:
   iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAYAAACpSkzOAAAABHNCSVQICAgIfAhkiAAAAAlwSFlz
   AAAFEwAABRMBWjvKTwAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAXBSURB
