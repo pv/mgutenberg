@@ -1,7 +1,7 @@
 Source: mgutenberg
 Priority: optional
 Maintainer: Pauli Virtanen <pav@iki.fi>
-Build-Depends: debhelper, python2.5, python-hildon
+Build-Depends: debhelper, python2.5, python-hildon, perl
 Standards-Version: 3.6.1
 
 Package: mgutenberg
