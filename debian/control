@@ -39,6 +39,15 @@ XB-Maemo-Icon-26:
   0nEoSHEU5+yNx3741C9//9tfPVwsFh8Nw4hGo0GxWCSOYxqNBtlc/8WDP/jDoVXp/p8RqIqmrVx7
   V6rJu3auuvkf5//5vm8pQdr4uhcUeObZP7747HPHdqy22Xtf/fj+B98X0H8ByM1swQKfJ1gAAAAA
   SUVORK5CYII=
-Description: E-book organizer
-  E-book organizer that can also search and download books directly
-  from Project Gutenberg.
+Description: E-book reader with Project Gutenberg integration
+  MGutenberg is an E-book organizer and reader that can search and download
+  books directly from Project Gutenberg.
+  .
+  Supported E-book formats:
+    * Plucker (plain text-only)
+    * FB2 (plain text-only)
+    * HTML (plain text-only)
+    * Plain text
+  .
+  Home page: http://bitbucket.org/pv/mgutenberg/wiki/
+XSBC-Bugtracker: http://bitbucket.org/pv/mgutenberg/issues/
