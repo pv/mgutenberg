@@ -30,7 +30,7 @@ def main():
         pass
 
     if MAEMO:
-        sdirs = [os.path.expanduser("~/MyDocs/.documents/Books")]
+        sdirs = [os.path.expanduser("~/MyDocs/Books")]
     else:
         sdirs = [os.path.join(os.path.expanduser("~"), "Desktop", "Books")]
     config.setdefault('search_dirs', sdirs)
