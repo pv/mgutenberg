@@ -1,6 +1,8 @@
 mgutenberg (0.3.1-1) fremantle; urgency=low
 
   * Address some performance issues in HTML viewer.
+  * Keep books in the same place as FBReader, ~/MyDocs/Books.
+  * Fix small bugs.
 
  -- Pauli Virtanen <pav@iki.fi>  Tue, 05 Jan 2010 17:19:27 +0200
 
