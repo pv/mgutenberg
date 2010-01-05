@@ -294,11 +294,13 @@ class EbookText(gtk.TextBuffer):
             if el_tag.startswith(NS):
                 el_tag = el_tag[len(NS):]
 
-            if el_tag == 'p' and event == 'start':
+            if el_tag in ('p', 'v') and event == 'start':
                 flush_text()
                 text.append(u"\n")
                 if elem.text:
                     text.append(elem.text.lstrip())
+            elif el_tag == 'stanza':
+                text.append(u"\n")
             elif el_tag in ('emphasis', 'strong', 'style', 'a'):
                 tag = {'emphasis': self.tag_emph,
                        'strong': self.tag_bold}.get(el_tag, None)
@@ -315,6 +317,8 @@ class EbookText(gtk.TextBuffer):
                         text.append(elem.tail)
                     if tag and tag in tags:
                         tags.remove(tag)
+            elif el_tag == 'section':
+                text.append(u"\n")
             elif el_tag == 'title':
                 if event == 'start':
                     flush_text()
