@@ -484,8 +484,19 @@ class EbookListWidget(object):
     def on_menu_delete(self, widget):
         model = self.widget_tree.get_model()
         try:
-            it = model.get_iter(self._active_item)
-            entry = model[it]
+            pth = self._active_item
+            self._active_item = None
+
+            entry = model[model.get_iter(pth)]
+
+            # De-filter the view
+            while model is not None and model is not self.store:
+                pth = model.convert_path_to_child_path(pth)
+                model = model.get_model()
+            if model != self.store:
+                raise RuntimeError("Programming error -- please report")
+            it = model.get_iter(pth)
+
             self._active_item = None
 
             def response(widget, response_id):
