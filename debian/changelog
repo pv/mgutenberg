@@ -1,3 +1,9 @@
+mgutenberg (0.3.1-1) karmic; urgency=low
+
+  * Address some performance issues in HTML viewer.
+
+ -- Pauli Virtanen <pav@iki.fi>  Tue, 05 Jan 2010 17:19:27 +0200
+
 mgutenberg (0.3-2) fremantle; urgency=low
 
   * Remove dependency on setuptools.
