@@ -134,7 +134,7 @@ class EbookList(gtk.ListStore):
                         if m:
                             g = m.groupdict()
                             entry = (reformat_auth(g.get('auth', author_name)),
-                                     g.get('titl', base),
+                                     reformat_title(g.get('titl', base)),
                                      g.get('lang', ''),
                                      full_path)
                             break
@@ -144,6 +144,9 @@ class EbookList(gtk.ListStore):
 
         def reformat_auth(auth):
             return auth.replace("; ", "\n")
+
+        def reformat_title(title):
+            return title.replace("; ", "\n")
 
         def really_add(r):
             for x in r:
