@@ -1,4 +1,4 @@
-mgutenberg (0.3.1-1) karmic; urgency=low
+mgutenberg (0.3.1-1) fremantle; urgency=low
 
   * Address some performance issues in HTML viewer.
 
