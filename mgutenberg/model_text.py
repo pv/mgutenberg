@@ -287,6 +287,10 @@ class EbookText(gtk.TextBuffer):
 
         NS = "{http://www.gribuser.ru/xml/fictionbook/2.0}"
 
+        par_had_text = True
+        par_mark = self.create_mark('par', self.get_end_iter(),
+                                    left_gravity=True)
+
         tags = []
         text = []
         for event, elem in etree.iterparse(f, ['start', 'end']):
@@ -299,6 +303,18 @@ class EbookText(gtk.TextBuffer):
                 text.append(u"\n")
                 if elem.text:
                     text.append(elem.text.lstrip())
+                    par_had_text = True
+                else:
+                    par_had_text = False
+                    self.move_mark(par_mark, self.get_end_iter())
+            elif el_tag == 'p' and event == 'end':
+                if elem.text and not par_had_text:
+                    pos = self.get_iter_at_mark(par_mark)
+                    pos.forward_char()
+                    self.insert_with_tags(pos,
+                                          elem.text.encode('utf-8'),
+                                          *tags)
+                par_had_text = True
             elif el_tag == 'stanza':
                 text.append(u"\n")
             elif el_tag in ('emphasis', 'strong', 'style', 'a'):
