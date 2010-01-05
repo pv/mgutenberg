@@ -311,15 +311,19 @@ def transpose_articles(text):
                 parts[0] = p.strip()
     return u"\n".join(parts).strip()
 
-def ellipsize(text, max_length=80):
+def ellipsize(text, max_length=80, ellipsis=u"..."):
     pieces = text.split(" ")
     size = -1
     for k, piece in enumerate(pieces):
-        if size + 1 + len(piece) + 4 > max_length:
+        if size + 1 + len(piece) + len(ellipsis) > max_length:
             if size > 0:
-                return u" ".join(pieces[:k]) + u" ..."
+                return u" ".join(pieces[:k]) + ellipsis
             else:
-                return pieces[0][:125] + u"..."
+                rem = max_length - len(ellipsis)
+                if rem >= 0:
+                    return pieces[0][:rem] + ellipsis
+                else:
+                    return ellipsis[:max_length]
         size += len(piece) + 1
     return u" ".join(pieces)
 
@@ -398,6 +402,8 @@ class DownloadInfo(gtk.ListStore):
         else:
             file_name = clean_filename(base_name)
 
+        file_name = trim_filename(file_name, max_length=255)
+
         if base_author:
             path = os.path.join(base_directory, base_author, file_name)
         else:
@@ -433,6 +439,25 @@ class DownloadInfo(gtk.ListStore):
                 callback(path)
         
         run_in_background(do_download, url, callback=on_finish)
+
+def trim_filename(fn, max_length=255):
+    if len(fn) <= max_length:
+        return fn
+
+    m = re.match(ur'^(.*?)(\.[a-zA-Z0-9.]+)$', fn)
+    if m:
+        base = m.group(1)
+        ext = m.group(2)
+    else:
+        base = fn
+        ext = u""
+
+    max_base_length = max_length - len(ext)
+    if max_base_length < 0:
+        max_base_length = 0
+
+    base = ellipsize(fn, max_length=max_base_length, ellipsis=u"\u2026")
+    return base + ext
 
 def clean_filename(s):
     """
