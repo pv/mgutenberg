@@ -111,6 +111,7 @@ class EbookText(gtk.TextBuffer):
             para = u""
             omit = 0
             slurp_space = True
+            in_pre = False
 
             def handle_starttag(self, tag, attrs):
                 self.flush()
@@ -139,6 +140,8 @@ class EbookText(gtk.TextBuffer):
                     self.omit += 1
                 elif tag == 'meta' and not self.in_body:
                     self.handle_meta(attrs)
+                elif tag == 'pre':
+                    self.in_pre = True
                 elif tag == 'img':
                     attrs = dict(attrs)
                     if 'alt' in attrs and attrs['alt'].strip():
@@ -174,6 +177,8 @@ class EbookText(gtk.TextBuffer):
                 elif tag in ('i', 'em', 'b', 'strong', 'bold'):
                     if self.tags:
                         self.tags.pop()
+                elif tag == 'pre':
+                    self.in_pre = False
 
             def handle_data(self, data):
                 if self.omit:
@@ -185,11 +190,13 @@ class EbookText(gtk.TextBuffer):
                         data = unicode(data, 'latin1')
 
                 data = data.replace('\r', '')
-                data = data.replace('\n', ' ')
-                if self.slurp_space:
-                    data = data.lstrip()
-                self.para += data
-                self.slurp_space = False
+                if not self.in_pre:
+                    data = data.replace('\n', ' ')
+                    if self.slurp_space:
+                        data = data.lstrip()
+                if data:
+                    self.para += data
+                    self.slurp_space = False
 
             def handle_charref(self, name):
                 try:
