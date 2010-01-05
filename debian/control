@@ -9,6 +9,7 @@ Section: user/utilities
 Architecture: all
 Depends: python2.5, python-hildon
 Suggests: fbreader
+XB-Maemo-Display-Name: MGutenberg E-Book Reader
 XB-Maemo-Icon-26:
   iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAYAAACpSkzOAAAABHNCSVQICAgIfAhkiAAAAAlwSFlz
   AAAFEwAABRMBWjvKTwAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAXBSURB
