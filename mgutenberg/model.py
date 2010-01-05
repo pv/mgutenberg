@@ -366,6 +366,8 @@ class DownloadInfo(gtk.ListStore):
                                  if not x.startswith('tr. ')])
         base_author = clean_filename(base_author)
 
+        title = self.title.replace("\n", "; ")
+
         url_base = url.split('/')[-1]
         try:
             ext = url_base.split('.', 1)[1]
@@ -378,12 +380,12 @@ class DownloadInfo(gtk.ListStore):
 
         if self.author and self.title and self.language:
             base_name = u"%s - %s [%s]" % (author,
-                                           self.title,
+                                           title,
                                            self.language.lower())
         elif self.author and self.title:
-            base_name = u"%s - %s" % (author, self.title)
+            base_name = u"%s - %s" % (author, title)
         elif self.title:
-            base_name = u"%s" % self.title
+            base_name = u"%s" % title
         else:
             base_name = u"Etext %d" % self.etext_id
         
