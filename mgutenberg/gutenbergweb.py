@@ -123,7 +123,7 @@ _GUTEN_SEARCH_RE_1 = _re.compile("""
   \s*
   <td>
     \s*
-    <a\s+href="/etext/(?P<etext2>.*?)">
+    <a\s+href="/[^/]+/(?P<etext2>\d+)/?">
       (?P<title>.*?)
     </a>
     \s*
