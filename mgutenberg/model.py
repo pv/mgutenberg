@@ -325,12 +325,11 @@ class GutenbergSearchList(gtk.ListStore):
             if isinstance(result, Exception):
                 callback(result)
                 return
-                
+
             r, infodict = result
             info.category = infodict['category']
-            for url, format, encoding, compression in r:
-                msg = [x for x in format, encoding, compression if x]
-                info.add(url, ', '.join(msg))
+            for url, description in r:
+                info.add(url, description)
             if callback:
                 callback(info)
 

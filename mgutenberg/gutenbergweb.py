@@ -64,7 +64,7 @@ def etext_info(etext_id):
     Get info concerning an Etext in the Project Gutenberg catalog
 
     :Returns:
-        [(url, format, encoding, compression), ...], infodict
+        [(url, description), ...], infodict
 
         infodict contains information about the whole entry.
         Keys: 'category'
@@ -173,24 +173,17 @@ def _parse_gutenberg_search_html(html):
 #-- Ebook info page
 
 _GUTEN_ETEXT_RE_0 = _re.compile("""
-.*?
-<th>Category</th>\s*<td><a[^>]*>(?P<category>[^>]*)</a>
+<td[^>]*dcterms:type[^>]*>(?P<category>.*?)</td>
 """, _re.X | _re.I)
 
-_GUTEN_ETEXT_RE_1 = _re.compile("""
+_GUTEN_ETEXT_RE_1 = _re.compile('''
 .*?
-<tr\s+class=".*?">
-  .*?
-  <td[^>]*format[^>]*>(?P<format>.*?)</td>\s*
-  <td[^>]*encoding[^>]*>(?P<encoding>.*?)</td>\s*
-  <td[^>]*compression[^>]*>(?P<compression>.*?)</td>\s*
-  <td[^>]*size[^>]*>(?P<size>.*?)</td>\s*
-  <td[^>]*download[^>]*>
+<tr[^>]*pgterms:file[^>]*>
+  \s*
+  <td[^>]*dcterms:format[^>]*>
     \s*
-    <a\s+href="(?P<url>.*?)".*?
-  </td>\s*
-</tr>
-""", _re.X | _re.I)
+    <a.*\s+href="(?P<url>[^"]*)"[^>]*>(?P<description>[^>]*)</a>
+''', _re.X | _re.I)
 
 def _parse_gutenberg_ebook_html(etext, html):
     """
@@ -201,8 +194,6 @@ def _parse_gutenberg_ebook_html(etext, html):
     if '/cache/plucker' in html:
         entries.append((
             _PLUCKER_URL % dict(etext=etext),
-            'plucker',
-            'plucker',
             'plucker'
             ))
 
@@ -212,11 +203,10 @@ def _parse_gutenberg_ebook_html(etext, html):
 
     m = _GUTEN_ETEXT_RE_0.search(h)
     if m:
-        h = h[m.end():]
         g = m.groupdict()
         category = unicode(_strip_tags(g.get('category', '').strip()),
                            'utf-8')
-    
+
     while h:
         m = _GUTEN_ETEXT_RE_1.search(h)
         if m:
@@ -224,24 +214,13 @@ def _parse_gutenberg_ebook_html(etext, html):
             g = m.groupdict()
 
             url = g.get('url', '').strip()
-            format = unicode(_strip_tags(g.get('format', '')).lower().strip(),
+            description = unicode(_strip_tags(g.get('description', '')).strip(),
                              'utf-8')
-            encoding = unicode(_strip_tags(g.get('encoding', '')).lower().strip(),
-                               'utf-8')
-            compression = unicode(_strip_tags(g.get('compression', '')).lower().strip(),
-                                  'utf-8')
-            if encoding == 'none':
-                encoding = ''
-            if compression == 'none':
-                compression = ''
-            if format == 'none':
-                format = ''
 
             if url:
                 if url.startswith('/'):
                     url = _DOWNLOAD_URL_BASE + url
-                entries.append((url, format, encoding, compression))
-
+                entries.append((url, description))
         else:
             break
 
