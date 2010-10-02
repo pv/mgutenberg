@@ -938,7 +938,7 @@ class GutenbergDownloadWindow(object):
                     dlg.add_button(_("Read it"), 1)
                     dlg.add_button(gtk.STOCK_CANCEL, 0)
                     def response(dlg, response_id, path):
-                        if response_id:
+                        if response_id == 1:
                             self.app.start_reader(path)
                         dlg.destroy()
                     dlg.connect("response", response, path)
