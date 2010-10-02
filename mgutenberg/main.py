@@ -16,6 +16,7 @@ CONFIG_SCHEMA = {
     'inverse_colors': bool,
     'portrait': bool,
     'ui_page': int,
+    'recent_files': (dict, int),
 }
 
 def main():
@@ -36,6 +37,7 @@ def main():
     config.setdefault('search_dirs', sdirs)
     config.setdefault('save_dir', sdirs[0])
     config.setdefault('positions', {})
+    config.setdefault('recent_files', {})
     config.setdefault('inverse_colors', False)
     config.setdefault('portrait', False)
     config.setdefault('ui_page', 1)
@@ -52,7 +54,8 @@ class MGutenbergApp(AppBase):
         AppBase.__init__(self)
         
         self.config = config
-        self.ebook_list = EbookList(config['search_dirs'])
+        self.ebook_list = EbookList(config['search_dirs'],
+                                    config['recent_files'])
         self.window = MainWindow(self)
         self.readers = []
 
@@ -90,6 +93,7 @@ class MGutenbergApp(AppBase):
             return self.show_notify(widget, _("Working..."))
 
     def start_reader(self, filename):
+        self.ebook_list.mark_visited(filename, self.config['recent_files'])
         reader.run(self, filename)
 
     def run(self, args):
@@ -139,11 +143,14 @@ class MainWindow(object):
 
     LOCAL_PAGE = 0
     GUTENBERG_PAGE = 1
+    RECENT_PAGE = 2
 
     def __init__(self, app):
         self.app = app
 
         self.ebook_list = EbookListWidget(self.app)
+        self.recent_list = EbookListWidget(self.app,
+                                           self.app.ebook_list.recent_list)
         self.gutenberg_search = GutenbergSearchWidget(self.app)
 
         self._start_ui_page = self.app.config['ui_page'] % 2
@@ -220,6 +227,11 @@ class MainWindow(object):
 
         self.gutenberg_search.search_button.grab_default()
 
+        # Recent ebooks tab
+        page = gtk.VBox()
+        page.pack_end(self.recent_list.widget, expand=True, fill=True)
+        self.notebook.append_page(page, gtk.Label(_("Recent")))
+
         if MAEMO:
             # Tabs are changed from menu
             self.notebook.set_show_tabs(False)
@@ -270,6 +282,10 @@ class MainWindow(object):
         self.notebook.set_current_page(self.GUTENBERG_PAGE)
         self.on_notebook_switch_page(None, None, self.GUTENBERG_PAGE)
 
+    def on_recent_button_click(self, widget):
+        self.notebook.set_current_page(self.RECENT_PAGE)
+        self.on_notebook_switch_page(None, None, self.RECENT_PAGE)
+
     def on_notebook_switch_page(self, notebook, page, page_num):
         self.app.config['ui_page'] = int(page_num)
 
@@ -277,18 +293,25 @@ class MainWindow(object):
             self.book_button.handler_block_by_func(self.on_book_button_click)
             self.gutenberg_button.handler_block_by_func(
                 self.on_gutenberg_button_click)
+            self.recent_button.handler_block_by_func(
+                self.on_recent_button_click)
 
             self.book_button.set_active(page_num == self.LOCAL_PAGE)
             self.gutenberg_button.set_active(page_num == self.GUTENBERG_PAGE)
+            self.recent_button.set_active(page_num == self.RECENT_BUTTON)
 
             if page_num == self.LOCAL_PAGE:
                 self.delete_file_button.show()
             elif page_num == self.GUTENBERG_PAGE:
                 self.delete_file_button.hide()
+            elif page_num == self.RECENT_PAGE:
+                self.delete_file_button.hide()
 
             self.book_button.handler_unblock_by_func(self.on_book_button_click)
             self.gutenberg_button.handler_unblock_by_func(
                 self.on_gutenberg_button_click)
+            self.recent_button.handler_unblock_by_func(
+                self.on_recent_button_click)
 
     def on_open_file(self, widget):
         m = hildon.FileSystemModel()
@@ -343,12 +366,15 @@ class MainWindow(object):
         # Filter buttons
         self.gutenberg_button = gtk.ToggleButton(label=_("Project Gutenberg"))
         self.book_button = gtk.ToggleButton(label=_("Local books"))
+        self.recent_button = gtk.ToggleButton(label=_("Recent"))
 
         self.gutenberg_button.connect("toggled", self.on_gutenberg_button_click)
         self.book_button.connect("toggled", self.on_book_button_click)
+        self.recent_button.connect("toggled", self.on_recent_button_click)
 
         menu.add_filter(self.gutenberg_button)
         menu.add_filter(self.book_button)
+        menu.add_filter(self.recent_button)
 
         open_file_button = gtk.Button(label=_("Open file"))
         open_file_button.connect("clicked", self.on_open_file)
@@ -376,11 +402,14 @@ class EbookListWidget(object):
     </ui>
     """]
 
-    def __init__(self, app):
+    def __init__(self, app, store=None):
         self.app = app
         self.filter_text = ''
 
-        self.store = app.ebook_list
+        if store is None:
+            self.store = app.ebook_list
+        else:
+            self.store = store
         self.filter = None
         self.filtered_store = None
         

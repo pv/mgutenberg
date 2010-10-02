@@ -13,13 +13,17 @@ DownloadInfo
 
     Information on a specific PG download
 
+RecentList
+
+   List of recently accessed books
+
 Config
 
     Configuration file backend
 
 """
 
-import re, os, sys, shutil, tempfile
+import re, os, sys, shutil, tempfile, time
 import xml.etree.ElementTree as ET
 from xml.parsers.expat import ExpatError
 
@@ -32,6 +36,10 @@ from util import *
 
 class OverwriteFileException(Exception): pass
 
+
+#------------------------------------------------------------------------------
+# Local book list
+#------------------------------------------------------------------------------
 
 def _is_caps_case(x):
     if len(x) < 1:
@@ -83,15 +91,43 @@ class EbookList(gtk.ListStore):
     """
     List of ebooks:
 
-        [(author, title, language, file_name), ...]
+        [(author, title, language, file_name, visit_timestamp), ...]
     """
-    
-    def __init__(self, search_dirs):
-        gtk.ListStore.__init__(self, str, str, str, str)
+
+    def __init__(self, search_dirs, recent_map=None):
+        gtk.ListStore.__init__(self, str, str, str, str, int)
         self.search_dirs = search_dirs
-    
+        if recent_map:
+            self.recent_map = dict(recent_map)
+        else:
+            self.recent_map = {}
+
+        def to_show(model, it):
+            return model.get(it, 4)[0] > 0
+
+        lst = self.filter_new()
+        lst.set_visible_func(to_show)
+        self.recent_list = gtk.TreeModelSort(lst)
+        self.recent_list.set_sort_column_id(4, gtk.SORT_DESCENDING)
+
+    def mark_visited(self, file_name, recent_map2=None):
+        stamp = int(time.time())
+        self.recent_map[file_name] = stamp
+        if recent_map2 is not None:
+            recent_map2[file_name] = stamp
+
+        # Update model
+        def walk(model, path, iter, user_data):
+            if model.get(iter, 3)[0] == file_name:
+                model.set_value(iter, 4, stamp)
+                return True
+            else:
+                return False
+        self.foreach(walk, None)
+
     def add(self, author=u"", title=u"", language=u"", file_name=""):
-        return self.append((author, title, language, file_name))
+        stamp = self.recent_map.get(file_name, -1)
+        return self.append((author, title, language, file_name, stamp))
 
     def delete_file(self, it):
         entry = self[it]
@@ -136,10 +172,12 @@ class EbookList(gtk.ListStore):
                             entry = (reformat_auth(g.get('auth', author_name)),
                                      reformat_title(g.get('titl', base)),
                                      g.get('lang', ''),
-                                     full_path)
+                                     full_path,
+                                     self.recent_map.get(full_path, -1))
                             break
                     if entry is None:
-                        entry = (author_name, base, "", full_path)
+                        entry = (author_name, base, "", full_path,
+                                 self.recent_map.get(full_path, -1))
                     files.append(entry)
 
         def reformat_auth(auth):
@@ -162,6 +200,11 @@ class EbookList(gtk.ListStore):
             run_in_gui_thread(really_add, files)
 
         start_thread(do_walk_tree, self.search_dirs)
+
+
+#------------------------------------------------------------------------------
+# Search results list
+#------------------------------------------------------------------------------
 
 NEXT_ID = -10
 
@@ -470,6 +513,7 @@ def clean_filename(s):
     # cleanup for VFAT and others
     s = re.sub(r'[\x00-\x1f"\*\\/:<>?|]', '', s)
     return s
+
 
 #------------------------------------------------------------------------------
 # Configuration backend
