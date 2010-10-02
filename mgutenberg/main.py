@@ -365,7 +365,7 @@ class MainWindow(object):
         menu = hildon.AppMenu()
 
         # Filter buttons
-        self.gutenberg_button = gtk.ToggleButton(label=_("Project Gutenberg"))
+        self.gutenberg_button = gtk.ToggleButton(label=_("Gutenberg"))
         self.book_button = gtk.ToggleButton(label=_("Local books"))
         self.recent_button = gtk.ToggleButton(label=_("Recent"))
 
