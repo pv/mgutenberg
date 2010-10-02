@@ -153,7 +153,7 @@ class MainWindow(object):
                                            self.app.ebook_list.recent_list)
         self.gutenberg_search = GutenbergSearchWidget(self.app)
 
-        self._start_ui_page = self.app.config['ui_page'] % 2
+        self._start_ui_page = self.app.config['ui_page'] % 3
 
         self._construct()
         self.widget.connect("destroy", self.on_destroy)

@@ -13,10 +13,6 @@ DownloadInfo
 
     Information on a specific PG download
 
-RecentList
-
-   List of recently accessed books
-
 Config
 
     Configuration file backend
