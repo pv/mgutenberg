@@ -164,6 +164,7 @@ class MainWindow(object):
         self.widget.show_all()
         if MAEMO:
             self.ebook_list.search.hide()
+            self.recent_list.search.hide()
 
         # Set up menu
         if self.menu is not None:
