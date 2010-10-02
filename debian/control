@@ -1,7 +1,7 @@
 Source: mgutenberg
 Priority: optional
 Maintainer: Pauli Virtanen <pav@iki.fi>
-Build-Depends: debhelper, python2.5, python-hildon, perl
+Build-Depends: debhelper, python2.5, python-hildon, perl, maemo-optify
 Standards-Version: 3.6.1
 
 Package: mgutenberg
@@ -50,5 +50,5 @@ Description: E-book reader with Project Gutenberg integration
     * HTML (plain text-only)
     * Plain text
   .
-  Home page: http://bitbucket.org/pv/mgutenberg/wiki/
-XSBC-Bugtracker: http://bitbucket.org/pv/mgutenberg/issues/
+  Home page: http://github.com/pv/mgutenberg/wiki
+XSBC-Bugtracker: http://github.com/pv/mgutenberg/issues
