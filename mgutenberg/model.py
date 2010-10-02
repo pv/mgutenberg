@@ -59,7 +59,7 @@ def get_valid_basename(base):
                  '.tcr',
                  '.tgz', '.ipk',
                  ]
-    skip_ext = ['.gz', '.bz2', '.tar']
+    skip_ext = ['.gz', '.bz2', '.tar', '.utf8', '.ascii', '.gen']
 
     while True:
         base, ext = os.path.splitext(base)
@@ -419,6 +419,13 @@ class DownloadInfo(gtk.ListStore):
         except IndexError:
             ext = ''
 
+        if ext == 'txt.utf8':
+            ext = 'txt'
+        elif ext == 'txt.ascii':
+            ext = 'txt'
+        elif ext == 'html.gen':
+            ext = 'html'
+
         if not ext and 'plucker' in format:
             ext = 'pdb'
             url_base += '.pdb'
@@ -452,7 +459,7 @@ class DownloadInfo(gtk.ListStore):
 
         if os.path.isfile(path) and not overwrite:
             raise OverwriteFileException()
-        
+
         dir_path = os.path.dirname(path)
         if not os.path.isdir(dir_path):
             os.makedirs(dir_path)

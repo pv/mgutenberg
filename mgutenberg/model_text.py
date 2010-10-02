@@ -87,7 +87,7 @@ class EbookText(gtk.TextBuffer):
         basefn, ext = os.path.splitext(filename)
         if ext in ('.html', '.htm'):
             self._load_html(f)
-        elif ext in ('.txt', '.rst'):
+        elif ext in ('.txt', '.rst', '.utf8', '.ascii'):
             self._load_plain_text(f)
         elif ext in ('.pdb'):
             self._load_plucker(f)
