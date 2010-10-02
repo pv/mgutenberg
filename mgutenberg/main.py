@@ -298,7 +298,7 @@ class MainWindow(object):
 
             self.book_button.set_active(page_num == self.LOCAL_PAGE)
             self.gutenberg_button.set_active(page_num == self.GUTENBERG_PAGE)
-            self.recent_button.set_active(page_num == self.RECENT_BUTTON)
+            self.recent_button.set_active(page_num == self.RECENT_PAGE)
 
             if page_num == self.LOCAL_PAGE:
                 self.delete_file_button.show()
