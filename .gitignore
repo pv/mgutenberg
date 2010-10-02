@@ -1,0 +1,14 @@
+*.pyc
+*.pyo
+/core
+/build
+/dist
+*~
+*.egg-info
+*.orig
+*.rej
+/footest
+/debian/mgutenberg
+*.debhelper
+*.substvars
+/debian/files
