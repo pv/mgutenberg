@@ -568,6 +568,8 @@ class Config(dict):
             o = {}
             for sel in el:
                 k = sel.get('key')
+                if isinstance(k, unicode):
+                    k = k.encode('utf-8')
                 if k is None: continue
                 o[k] = self._fromxml(sel)
             return o
@@ -580,7 +582,7 @@ class Config(dict):
             return None
 
     def load(self):
-        f = open(self.file_name, 'r')
+        f = open(self.file_name, 'rb')
         try:
             tree = ET.parse(f)
             d = self._fromxml(tree.getroot())
