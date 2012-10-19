@@ -12,6 +12,7 @@ class HTTPError(IOError):
         return "HTTP: %d %s" % (self.args[1], self.args[2])
 
 class MyURLOpener(_urllib.FancyURLopener):
+    version = "MGutenberg"
     def http_error_default(self, url, fp, errcode, errmsg, headers):
         fp.close()
         raise HTTPError(errcode, errmsg, headers)   

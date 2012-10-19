@@ -178,8 +178,6 @@ _GUTEN_ETEXT_RE_0 = _re.compile("""
 
 _GUTEN_ETEXT_RE_1 = _re.compile('''
 .*?
-<tr[^>]*pgterms:file[^>]*>
-  \s*
   <td[^>]*dcterms:format[^>]*>
     \s*
     <a.*\s+href="(?P<url>[^"]*)"[^>]*>(?P<description>[^>]*)</a>
